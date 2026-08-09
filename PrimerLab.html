@@ -7,6 +7,8 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -158,6 +160,15 @@ select.inp{cursor:pointer}
   color:var(--text-soft);border-bottom:2px solid transparent;margin-bottom:-2px}
 .detail-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 
+/* SEKME GRUBU — Hekimden Gelenler: Yeni Gelen / Aktarılan / Tamamlanan */
+.tab-group{display:flex;gap:8px}
+.tab-item{padding:10px 18px;border-radius:10px;border:1.5px solid var(--border);background:#fff;cursor:pointer;
+  font-size:12.5px;font-weight:700;color:var(--text-soft);display:flex;align-items:center;gap:7px;transition:all .15s}
+.tab-item:hover{border-color:var(--primary);color:var(--primary)}
+.tab-item.active{background:var(--sidebar);border-color:var(--sidebar);color:#fff}
+.tab-count{background:var(--primary-light);color:var(--primary);border-radius:20px;padding:1px 8px;font-size:10.5px}
+.tab-item.active .tab-count{background:rgba(255,255,255,.2);color:#fff}
+
 /* INVOICE MODE TOGGLE */
 .inv-mode-btn{flex:1;padding:7px 10px;border:none;background:transparent;border-radius:6px;
   cursor:pointer;font-size:12px;font-weight:600;color:var(--text-soft);transition:all .15s}
@@ -197,6 +208,89 @@ select.inp{cursor:pointer}
 #toast.error{border-left:4px solid var(--danger)}
 #toast.info{border-left:4px solid var(--accent)}
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* İŞ TAMAMLANDI BİLDİRİMLERİ — sol alt köşe, elle kapatılana kadar kapanmaz */
+#completion-notif-stack{position:fixed;bottom:24px;left:24px;z-index:9998;display:flex;
+  flex-direction:column-reverse;gap:10px;max-width:360px;pointer-events:none}
+.completion-notif{pointer-events:auto;background:#fff;border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.2);
+  border-left:5px solid var(--success);padding:14px 14px 14px 16px;display:flex;gap:12px;align-items:flex-start;
+  opacity:0;transform:translateX(-18px);transition:opacity .25s ease,transform .25s ease}
+.completion-notif.show{opacity:1;transform:translateX(0)}
+.cn-icon{font-size:21px;flex-shrink:0;line-height:1.3}
+.cn-body{flex:1;min-width:0}
+.cn-title{font-weight:800;font-size:12.5px;color:var(--success);letter-spacing:.2px;margin-bottom:3px;
+  text-transform:uppercase}
+.cn-detail{font-size:13px;color:var(--text);line-height:1.45}
+.cn-close{background:none;border:none;color:var(--text-soft);cursor:pointer;font-size:14px;padding:3px 6px;
+  flex-shrink:0;border-radius:7px;transition:background .15s}
+.cn-close:hover{background:#f0f4f8;color:var(--text)}
+
+/* YENİ MESAJ BİLDİRİMLERİ — sağ alt köşe, elle kapatılana/tıklanana kadar kapanmaz */
+#chat-notif-stack{position:fixed;bottom:24px;right:24px;z-index:9998;display:flex;
+  flex-direction:column-reverse;gap:10px;max-width:360px;pointer-events:none}
+.chat-notif{pointer-events:auto;cursor:pointer;background:#fff;border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.2);
+  border-left:5px solid var(--primary);padding:14px 14px 14px 16px;display:flex;gap:12px;align-items:flex-start;
+  opacity:0;transform:translateX(18px);transition:opacity .25s ease,transform .25s ease}
+.chat-notif.show{opacity:1;transform:translateX(0)}
+.chat-notif:hover{box-shadow:0 14px 40px rgba(0,0,0,.26)}
+.cnf-icon{font-size:21px;flex-shrink:0;line-height:1.3}
+.cnf-body{flex:1;min-width:0}
+.cnf-title{font-weight:800;font-size:12.5px;color:var(--primary);letter-spacing:.2px;margin-bottom:3px;text-transform:uppercase}
+.cnf-detail{font-size:13px;color:var(--text);line-height:1.4}
+.cnf-preview{font-size:12.5px;color:var(--text-soft);margin-top:3px;line-height:1.4;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cnf-close{background:none;border:none;color:var(--text-soft);cursor:pointer;font-size:14px;padding:3px 6px;
+  flex-shrink:0;border-radius:7px;transition:background .15s}
+.cnf-close:hover{background:#f0f4f8;color:var(--text)}
+
+/* MESAJLAR (admin) */
+.chat-admin-layout{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:stretch;height:calc(100vh - 170px);min-height:520px;max-height:800px}
+.chat-thread-list-card{height:100%;overflow-y:auto;display:flex;flex-direction:column}
+.chat-thread-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:10px;cursor:pointer;
+  transition:background .15s;margin-bottom:2px}
+.chat-thread-item:hover{background:#f0f4f8}
+.chat-thread-item.active{background:var(--primary-light)}
+.chat-thread-avatar{width:38px;height:38px;border-radius:50%;background:var(--sidebar);color:#fff;display:flex;
+  align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.chat-thread-avatar.tech{background:#a21caf}
+.chat-thread-avatar.job{background:var(--primary);font-size:16px}
+.chat-thread-body{flex:1;min-width:0}
+.chat-thread-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-thread-preview{font-size:11.5px;color:var(--text-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.chat-thread-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.chat-thread-time{font-size:9.5px;color:var(--text-soft)}
+.chat-thread-unread{background:var(--danger);color:#fff;border-radius:20px;font-size:10px;font-weight:800;
+  padding:2px 7px;min-width:18px;text-align:center}
+.chat-conv-card{height:100%;display:flex;flex-direction:column;padding:0;overflow:hidden}
+.chat-conv-wrap{display:flex;flex-direction:column;height:100%}
+.chat-conv-header{padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;flex-shrink:0}
+.chat-messages{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:12px;background:#f7f9fc}
+.chat-bubble-row{display:flex;flex-direction:column;max-width:65%}
+.chat-bubble-row.mine{align-self:flex-end;align-items:flex-end}
+.chat-bubble-row.theirs{align-self:flex-start;align-items:flex-start}
+.chat-sender-label{font-size:10.5px;font-weight:700;color:var(--text-soft);margin-bottom:3px;padding:0 4px}
+.chat-bubble{padding:10px 14px;border-radius:16px;font-size:13.5px;line-height:1.5;word-break:break-word;box-shadow:0 1px 3px rgba(16,32,60,.08)}
+.chat-bubble-row.mine .chat-bubble{background:var(--primary);color:#fff;border-bottom-right-radius:5px}
+.chat-bubble-row.theirs .chat-bubble{background:#fff;color:var(--text);border-bottom-left-radius:5px;border:1px solid var(--border)}
+.chat-file-chip{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;text-decoration:none;
+  font-size:12.5px;font-weight:600;margin-top:2px}
+.chat-bubble-row.mine .chat-file-chip{background:rgba(255,255,255,.18);color:#fff}
+.chat-bubble-row.theirs .chat-file-chip{background:#f0f4f8;color:var(--text);border:1px solid var(--border)}
+.chat-file-img{max-width:220px;border-radius:12px;display:block;margin-top:4px;cursor:pointer}
+.chat-timestamp{font-size:10px;color:var(--text-soft);margin-top:4px;padding:0 4px}
+.chat-input-row{display:flex;align-items:center;gap:8px;padding:14px 18px;border-top:1px solid var(--border);flex-shrink:0;background:#fff}
+.chat-attach-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--border);background:#fff;
+  font-size:17px;cursor:pointer;flex-shrink:0;transition:all .15s}
+.chat-attach-btn:hover{border-color:var(--primary);background:var(--primary-light)}
+.chat-text-input{flex:1;padding:11px 16px;border-radius:22px;border:1.5px solid var(--border);font-family:inherit;
+  font-size:13.5px;outline:none}
+.chat-text-input:focus{border-color:var(--primary)}
+.chat-send-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--primary);color:#fff;
+  font-size:16px;cursor:pointer;flex-shrink:0;transition:filter .15s}
+.chat-send-btn:hover{filter:brightness(1.08)}
+.chat-upload-note{padding:8px 22px;font-size:11.5px;color:var(--warning);background:#fffbeb;flex-shrink:0}
+.chat-empty{margin:auto;text-align:center;color:var(--text-soft);padding:30px}
+.chat-empty .icon{font-size:34px;margin-bottom:8px}
 
 /* LOADING OVERLAY */
 #loading-overlay{position:fixed;inset:0;background:rgba(240,244,248,.9);z-index:4500;
@@ -461,6 +555,8 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
 </div>
 
 <div id="toast"></div>
+<div id="completion-notif-stack"></div>
+<div id="chat-notif-stack"></div>
 
 <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -712,6 +808,21 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
       <div class="form-group"><label>Teslim Tarihi</label><input type="date" id="edit-dateout" class="inp inp-w100"></div>
       <div class="form-group"><label>🎨 Diş Rengi</label><div id="edit-color-picker"></div><div id="edit-color-display" style="margin-top:6px"></div></div>
       <div class="form-group"><label>Teknisyen</label><select id="edit-tech" class="inp inp-w100"><option value="">Atanmamış</option></select></div>
+      <div class="form-group">
+        <label>📎 Tarama Dosyaları <span style="font-weight:400;color:var(--text-soft)">(sistem dışından gelen işler için)</span></label>
+        <div id="edit-files-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+        <div id="edit-dropzone" onclick="document.getElementById('edit-file-input').click()"
+             style="border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;font-size:12px;color:var(--text-soft);transition:all .15s">
+          ☁️ Dosya eklemek için dokunun ya da sürükleyin
+        </div>
+        <input type="file" id="edit-file-input" multiple style="display:none" onchange="onEditFilesPicked(this.files)">
+        <div id="edit-upload-note" style="font-size:11px;color:var(--warning);margin-top:6px;display:none">⏳ Dosya yükleme servisine bağlanılıyor…</div>
+      </div>
+      <div class="form-group" id="edit-design-files-group" style="display:none">
+        <label>🎨 Tasarım Dosyaları <span style="font-weight:400;color:var(--text-soft)">(teknisyen tarafından yüklendi)</span></label>
+        <div id="edit-design-files-list" style="display:flex;flex-direction:column;gap:6px"></div>
+        <button type="button" class="btn btn-sm btn-outline" id="edit-design-download-btn" onclick="downloadAllJobDesignFiles(editingJobId)" style="margin-top:8px">📦 Tümünü İndir</button>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeJobEditModal()">İptal</button>
@@ -737,6 +848,7 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
         <div class="nav-item" onclick="showPage('dash',this)"><span class="nav-icon">🏠</span>Genel Bakış</div>
         <div class="nav-item" onclick="showPage('order',this)"><span class="nav-icon">📝</span>Sipariş Formu</div>
         <div class="nav-item" onclick="showPage('doctorsubs',this)"><span class="nav-icon">📥</span>Hekimden Gelenler<span class="nav-badge" id="badge-doctorsubs" style="display:none;background:var(--accent)">0</span></div>
+        <div class="nav-item" onclick="showPage('chat',this)"><span class="nav-icon">💬</span>Mesajlar<span class="nav-badge" id="badge-chat" style="display:none;background:var(--danger)">0</span></div>
         <div class="nav-item" onclick="showPage('pending',this)"><span class="nav-icon">🔔</span>Onay Bekleyen<span class="nav-badge" id="badge-pending" style="display:none;background:var(--danger)">0</span></div>
         <div class="nav-item" onclick="showPage('dispatch',this)"><span class="nav-icon">🎯</span>İş Dağıtım Merkezi<span class="nav-badge" id="badge-dispatch" style="display:none;background:var(--warning)">0</span></div>
         <div class="nav-item active" onclick="showPage('jobs',this)"><span class="nav-icon">📋</span>Devam Eden İşler<span class="nav-badge" id="badge-jobs">0</span></div>
@@ -889,6 +1001,11 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
             <div class="form-group"><label>Mail Adresi (İsteğe Bağlı)</label><input type="email" id="d-email" placeholder="hekim@gmail.com" class="inp inp-w100"></div>
             <div class="form-group"><label>🔑 Hekim Portalı Kullanıcı Adı</label><input type="text" id="d-username" placeholder="örn. drmehmet" class="inp inp-w100" autocomplete="off"></div>
             <div class="form-group"><label>🔑 Hekim Portalı Şifresi</label><input type="text" id="d-password" placeholder="örn. 1234" class="inp inp-w100" autocomplete="off"></div>
+            <div class="form-group">
+              <label>⚡ Otomatik Teknisyen <span style="font-weight:400;color:var(--text-soft)">(isteğe bağlı)</span></label>
+              <select id="d-auto-tech" class="inp inp-w100"><option value="">— Yok, onay bekleyene düşsün —</option></select>
+              <p style="font-size:11px;color:var(--text-soft);margin-top:5px;line-height:1.4">Seçilirse, bu hekimin işleri admin onayı beklemeden doğrudan bu teknisyene atanmış olarak "Devam Eden İşler"e düşer.</p>
+            </div>
             <button class="btn btn-primary" style="width:100%" onclick="saveDoctor()">➕ Hekim Ekle</button>
             <hr class="divider">
             <div class="card-title" style="margin-bottom:10px">👨‍⚕️ Hekimler</div>
@@ -1780,6 +1897,12 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
           <hr class="divider">
           <div class="form-group"><label>🔑 Hekim Portalı Kullanıcı Adı</label><input type="text" id="dr-username-input" class="inp inp-w100" placeholder="örn. drmehmet" autocomplete="off"></div>
           <div class="form-group"><label>🔑 Hekim Portalı Şifresi</label><input type="text" id="dr-password-input" class="inp inp-w100" placeholder="örn. 1234" autocomplete="off"></div>
+          <hr class="divider">
+          <div class="form-group">
+            <label>⚡ Otomatik Teknisyen <span style="font-weight:400;color:var(--text-soft)">(isteğe bağlı)</span></label>
+            <select id="dr-auto-tech-input" class="inp inp-w100"><option value="">— Yok, onay bekleyene düşsün —</option></select>
+            <p style="font-size:11px;color:var(--text-soft);margin-top:5px;line-height:1.4">Seçilirse, bu hekimin işleri admin onayı beklemeden doğrudan bu teknisyene atanmış olarak "Devam Eden İşler"e düşer.</p>
+          </div>
           <p style="font-size:11px;color:var(--text-soft);margin-top:6px;line-height:1.5">💡 Mail adresi değiştirilirse, bu hekimin mail filtresi de otomatik güncellenir. Mevcut iş kayıtlarındaki hekim adı da otomatik güncellenecektir. Kullanıcı adı/şifre, hekimin Hekim Portalı'na giriş yapmasını sağlar.</p>
         </div>
         <div class="modal-footer">
@@ -1908,6 +2031,28 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
       <div id="pending-incoming-section">
         <div class="card">
           <div class="card-title">📥 Gelen İş Onayı <span style="font-size:11px;color:var(--text-soft);font-weight:400;margin-left:8px">— Sipariş formundan veya teknisyen iş girişinden gelen yeni işler</span></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+            <div style="flex:1;min-width:180px">
+              <label style="font-size:10px;font-weight:700;color:var(--text-soft);text-transform:uppercase;display:block;margin-bottom:4px">Ara</label>
+              <input type="text" id="pending-search" class="inp" placeholder="🔍 Hekim, hasta, iş türü..." style="padding:8px 12px;font-size:12.5px" oninput="renderIncomingApprovalList()">
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--text-soft);text-transform:uppercase;display:block;margin-bottom:4px">Teknisyen</label>
+              <select id="pending-tech-filter" class="inp" style="padding:8px 10px;font-size:12.5px" onchange="renderIncomingApprovalList()">
+                <option value="">Tümü</option>
+                <option value="__unassigned__">Atanmamış</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--text-soft);text-transform:uppercase;display:block;margin-bottom:4px">Başlangıç</label>
+              <input type="date" id="pending-date-from" class="inp" style="padding:8px 10px;font-size:12.5px" onchange="renderIncomingApprovalList()">
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--text-soft);text-transform:uppercase;display:block;margin-bottom:4px">Bitiş</label>
+              <input type="date" id="pending-date-to" class="inp" style="padding:8px 10px;font-size:12.5px" onchange="renderIncomingApprovalList()">
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="clearPendingFilters()">✕ Temizle</button>
+          </div>
           <div id="pending-job-list"></div>
         </div>
       </div>
@@ -2043,8 +2188,42 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
           <input type="text" id="ds-search" class="inp" placeholder="🔍 Hekim / hasta ara..." style="font-size:12px;padding:8px 12px;width:200px" oninput="renderDoctorSubmissions()">
         </div>
       </div>
+      <div class="tab-group" style="margin-bottom:14px">
+        <div class="tab-item active" id="ds-tab-new" onclick="setDoctorSubsTab('new')">🆕 Yeni Gelen <span class="tab-count" id="ds-cnt-new">0</span></div>
+        <div class="tab-item" id="ds-tab-transferred" onclick="setDoctorSubsTab('transferred')">📤 Aktarılan <span class="tab-count" id="ds-cnt-transferred">0</span></div>
+        <div class="tab-item" id="ds-tab-done" onclick="setDoctorSubsTab('done')">✅ Tamamlanan <span class="tab-count" id="ds-cnt-done">0</span></div>
+      </div>
       <div class="card">
         <div id="doctorsubs-list"></div>
+      </div>
+    </section>
+
+    <section id="page-chat" class="section">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>💬 Mesajlar</h2>
+          <p style="font-size:12px;color:var(--text-soft)">Hekim ve teknisyenlerden gelen sohbetleri buradan yanıtlayın, dosya paylaşabilirsiniz</p>
+        </div>
+      </div>
+      <div class="chat-admin-layout">
+        <div class="card chat-thread-list-card">
+          <input type="text" id="chat-thread-search" class="inp" placeholder="🔍 İsim ara..." style="margin-bottom:12px;width:100%" oninput="renderChatThreadList()">
+          <div id="chat-thread-list"></div>
+        </div>
+        <div class="card chat-conv-card">
+          <div id="chat-conv-empty" class="chat-empty"><div class="icon">💬</div><div>Soldan bir sohbet seçin</div></div>
+          <div id="chat-conv-active" class="hidden chat-conv-wrap">
+            <div class="chat-conv-header" id="chat-conv-header"></div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-row">
+              <button class="chat-attach-btn" onclick="document.getElementById('chat-file-input').click()" title="Dosya ekle">📎</button>
+              <input type="file" id="chat-file-input" style="display:none" onchange="onChatFilePicked(this.files)">
+              <input type="text" id="chat-text-input" class="chat-text-input" placeholder="Mesajınızı yazın..." onkeydown="if(event.key==='Enter')sendChatMessage()">
+              <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
+            </div>
+            <div id="chat-upload-note" class="chat-upload-note hidden">📤 Dosya yükleniyor…</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -2121,6 +2300,15 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const rtdb = firebase.database();
+const fbStorage = firebase.storage();
+const fbAuth = firebase.auth();
+// Admin panelinden dosya yükleyebilmek (Firebase Storage kuralları gereği) için
+// arka planda sessizce anonim oturum açılır — Hekim Portalı'nda kullanılan
+// mekanizmanın AYNISI. Storage kurallarında "request.auth != null" şartı varsa
+// bu olmadan yükleme başarısız olur.
+let _adminStorageAuthReady = false;
+fbAuth.signInAnonymously().catch(err => console.error('Anonim oturum açılamadı (dosya yükleme):', err));
+fbAuth.onAuthStateChanged(user => { _adminStorageAuthReady = !!user; });
 
 // ═══════════════════════════════════════════════════════
 //  WORKSPACE (Çalışma Alanı — DIGICAD vs PRIMER TEK)
@@ -2320,6 +2508,30 @@ function isOfflineWorkspace() {
 }
 
 // ── Firebase → Yerel belleğe yükle ──────────────────
+let _prevJobStatuses = null; // "Tamamlandı" bildirimi için bir önceki iş durumları anlık görüntüsü
+
+// Sol alt köşede, elle kapatılana kadar KAPANMAYAN "İş Tamamlandı" bildirimi
+function showCompletionNotification(job) {
+  const stack = document.getElementById('completion-notif-stack');
+  if (!stack) return;
+  const notifId = 'compnotif-' + job.id;
+  if (document.getElementById(notifId)) return; // zaten gösteriliyor, tekrar ekleme
+  const div = document.createElement('div');
+  div.id = notifId;
+  div.className = 'completion-notif';
+  div.innerHTML = `
+    <div class="cn-icon">✅</div>
+    <div class="cn-body">
+      <div class="cn-title">İş Tamamlandı</div>
+      <div class="cn-detail"><b>${escHtml(job.patient||'—')}</b>${job.type ? ' — ' + escHtml(job.type) : ''}</div>
+      <div class="cn-detail" style="color:var(--text-soft)">👨‍⚕️ ${escHtml(job.drName||'—')}${job.techName ? ' · 🔧 ' + escHtml(job.techName) : ''}</div>
+    </div>
+    <button class="cn-close" onclick="this.closest('.completion-notif').remove()" title="Kapat">✕</button>
+  `;
+  stack.appendChild(div);
+  requestAnimationFrame(() => div.classList.add('show'));
+}
+
 function loadDB() {
   // Workspace seçilmediyse bekle
   if (!_workspace) {
@@ -2358,8 +2570,27 @@ function loadDB() {
   // DIGICAD — Firebase dinleyicisi
   rtdb.ref(dbPath()).on('value', snap => {
     const data = snap.val() || {};
+    const newJobs = data.jobs || {};
+
+    // ── TAMAMLANDI BİLDİRİMİ ──────────────────────────────
+    // Bir teknisyen bir işi "Tamamlandı" yaptığı anda, admin panelinde SOL ALT
+    // köşede kalıcı (elle kapatılana kadar kapanmayan) bir bildirim gösterilir.
+    // Sadece BU oturumda canlı olarak gerçekleşen geçişler için tetiklenir —
+    // sayfa ilk açıldığında geçmişte zaten tamamlanmış işler için bildirim
+    // YAĞMURU olmasın diye ilk snapshot'ta (_prevJobStatuses===null) atlanır.
+    if (_prevJobStatuses !== null) {
+      Object.values(newJobs).forEach(j => {
+        if (j.status === 'Tamamlandı' && _prevJobStatuses[j.id] && _prevJobStatuses[j.id] !== 'Tamamlandı') {
+          showCompletionNotification(j);
+        }
+      });
+    }
+    const _nextPrevStatuses = {};
+    Object.values(newJobs).forEach(j => { _nextPrevStatuses[j.id] = j.status; });
+    _prevJobStatuses = _nextPrevStatuses;
+
     DB.doctors     = data.doctors     || {};
-    DB.jobs        = data.jobs        || {};
+    DB.jobs        = newJobs;
     DB.payments    = data.payments    || {};
     DB.technicians = data.technicians || {};
     DB.pendingJobs = data.pendingJobs || {};
@@ -2383,7 +2614,7 @@ function loadDB() {
         techs:renderTechPage, dispatch:renderDispatch, settings:renderSettingsPage,
         pending:renderPendingPage, techview:renderTechView, expenses:renderExpenses,
         monthly:renderMonthlyReport, sales:renderSalesPage, order:renderOrderForm,
-        doctorsubs:renderDoctorSubmissions };
+        doctorsubs:renderDoctorSubmissions, chat:renderChatThreadList };
       map[pg]?.(); updateBadges();
     }
   }, err => {
@@ -2392,6 +2623,280 @@ function loadDB() {
     document.getElementById('loading-overlay').style.display = 'none';
     renderJobs(); renderDash(); renderDrNav(); renderTechPage(); renderMailFilterList();
   });
+
+  startChatDataListener();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MESAJLAR (SOHBET) — hekim/teknisyen portallarıyla AYNI veri
+//  yolunu (db/digicad/chats/{threadId}/messages) kullanır.
+//  threadId biçimi: "dr_{hekimId}" ya da "tech_{teknisyenId}"
+// ═══════════════════════════════════════════════════════
+let _allChats = {};
+let _chatListenerStarted = false;
+let _activeChatThreadId = null;
+let _chatSeenMsgIds = {};   // threadId -> Set(msgId) — yeni mesaj bildirimi için
+let _chatFirstLoad = true;  // ilk yüklemede geçmiş mesajlar için bildirim göstermeyelim
+let _chatDataRefObj = null; // .off() ile kapatabilmek için referansı saklarız
+
+function startChatDataListener() {
+  if (_chatListenerStarted || isOfflineWorkspace()) return;
+  _chatListenerStarted = true;
+  _chatDataRefObj = rtdb.ref(dbPath('chats'));
+  _chatDataRefObj.on('value', snap => {
+    const newChats = snap.val() || {};
+
+    // ── YENİ MESAJ BİLDİRİMİ ────────────────────────────
+    // Sadece bu oturumda canlı olarak gelen, admin'den gelmeyen mesajlar
+    // için sağ altta kalıcı bildirim gösterilir. Şu an o sohbeti açık
+    // izliyorsanız (Mesajlar sayfasında o thread aktifse) bildirim
+    // gösterilmez, mesaj zaten ekranda görünüyordur.
+    Object.keys(newChats).forEach(tid => {
+      const msgs = newChats[tid].messages ? Object.values(newChats[tid].messages) : [];
+      const seenSet = _chatSeenMsgIds[tid] || (_chatSeenMsgIds[tid] = new Set());
+      msgs.forEach(m => {
+        if (!seenSet.has(m.id)) {
+          if (!_chatFirstLoad && m.senderRole !== 'admin' && tid !== _activeChatThreadId) {
+            showChatNotification(tid, m);
+          }
+          seenSet.add(m.id);
+        }
+      });
+    });
+    _chatFirstLoad = false;
+
+    _allChats = newChats;
+    updateChatBadge();
+    const pg = document.querySelector('.section.active')?.id?.replace('page-','');
+    if (pg === 'chat') {
+      renderChatThreadList();
+      if (_activeChatThreadId) renderChatMessages();
+    }
+  });
+}
+
+// Workspace değiştirildiğinde (digicad ↔ primer) eski workspace'in sohbet
+// dinleyicisi kapatılıp verileri sıfırlanır — aksi halde admin başka bir
+// workspace'e geçtiğinde önceki workspace'in sohbetlerini görmeye devam eder.
+function stopChatDataListener() {
+  if (_chatDataRefObj) { _chatDataRefObj.off(); _chatDataRefObj = null; }
+  _chatListenerStarted = false;
+  _allChats = {};
+  _chatSeenMsgIds = {};
+  _chatFirstLoad = true;
+  _activeChatThreadId = null;
+  const badge = document.getElementById('badge-chat');
+  if (badge) badge.style.display = 'none';
+  const emptyEl = document.getElementById('chat-conv-empty');
+  const activeEl = document.getElementById('chat-conv-active');
+  if (emptyEl) emptyEl.classList.remove('hidden');
+  if (activeEl) activeEl.classList.add('hidden');
+}
+
+// Sağ altta, elle kapatılana ya da tıklanana kadar KAPANMAYAN yeni mesaj bildirimi
+function showChatNotification(threadId, msg) {
+  const stack = document.getElementById('chat-notif-stack');
+  if (!stack) return;
+  const info = resolveThreadInfo(threadId);
+  const preview = msg.text ? msg.text.slice(0, 70) : (msg.fileUrl ? '📎 ' + (msg.fileName || 'Dosya gönderildi') : '');
+  const div = document.createElement('div');
+  div.className = 'chat-notif';
+  div.innerHTML = `
+    <div class="cnf-icon">💬</div>
+    <div class="cnf-body">
+      <div class="cnf-title">Yeni Mesaj — ${escHtml(msg.senderName || '')}</div>
+      <div class="cnf-detail">${info.icon} <b>${escHtml(info.name)}</b></div>
+      ${preview ? `<div class="cnf-preview">${escHtml(preview)}</div>` : ''}
+    </div>
+    <button class="cnf-close" title="Kapat" onclick="event.stopPropagation();this.closest('.chat-notif').remove()">✕</button>
+  `;
+  div.onclick = () => {
+    div.remove();
+    showPage('chat', document.querySelector('.nav-item[onclick*="\'chat\'"]'));
+    openChatThread(threadId);
+  };
+  stack.appendChild(div);
+  requestAnimationFrame(() => div.classList.add('show'));
+}
+
+// threadId'den okunabilir isim/tip bilgisi çözer
+function resolveThreadInfo(threadId) {
+  if (threadId.startsWith('job_')) {
+    const id = parseInt(threadId.slice(4));
+    const j = jobArr().find(x => x.id === id);
+    if (j) {
+      return {
+        name: `${j.patient||'—'} — ${j.type||''}`.trim(),
+        sub: `👨‍⚕️ ${j.drName||'—'}${j.techName ? ' · 🔧 ' + j.techName : ''}`,
+        type: 'job', icon: '💼'
+      };
+    }
+    return { name: 'Silinmiş / Arşivlenmiş İş', sub: '', type: 'job', icon: '💼' };
+  }
+  if (threadId.startsWith('dr_')) {
+    const id = parseInt(threadId.slice(3));
+    const dr = drArr().find(d => d.id === id);
+    return { name: dr ? dr.name : 'Silinmiş Hekim', sub: '', type: 'doctor', icon: '👨‍⚕️' };
+  }
+  if (threadId.startsWith('tech_')) {
+    const id = parseInt(threadId.slice(5));
+    const t = techArr().find(x => x.id === id);
+    return { name: t ? t.name : 'Silinmiş Teknisyen', sub: '', type: 'technician', icon: '🔧' };
+  }
+  return { name: threadId, sub: '', type: 'unknown', icon: '💬' };
+}
+
+function chatThreadUnreadCount(threadId) {
+  const thread = _allChats[threadId];
+  if (!thread || !thread.messages) return 0;
+  const lastSeen = (() => { try { return localStorage.getItem('admin_chat_seen_' + threadId) || ''; } catch(e) { return ''; } })();
+  return Object.values(thread.messages).filter(m => m.senderRole !== 'admin' && m.timestamp && m.timestamp > lastSeen).length;
+}
+
+function updateChatBadge() {
+  const badge = document.getElementById('badge-chat');
+  if (!badge) return;
+  let total = 0;
+  Object.keys(_allChats).forEach(tid => { total += chatThreadUnreadCount(tid); });
+  if (total > 0) { badge.style.display = ''; badge.innerText = total > 99 ? '99+' : total; }
+  else { badge.style.display = 'none'; }
+}
+
+function renderChatThreadList() {
+  const el = document.getElementById('chat-thread-list');
+  if (!el) return;
+  const q = (document.getElementById('chat-thread-search')?.value || '').toLocaleLowerCase('tr-TR');
+
+  let threads = Object.keys(_allChats).map(tid => {
+    const info = resolveThreadInfo(tid);
+    const msgs = _allChats[tid].messages ? Object.values(_allChats[tid].messages).sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||'')) : [];
+    const last = msgs[msgs.length - 1];
+    return {
+      threadId: tid, ...info,
+      lastText: last ? (last.text || (last.fileUrl ? '📎 ' + (last.fileName || 'Dosya') : '')) : '',
+      lastTime: last ? last.timestamp : '',
+      unread: chatThreadUnreadCount(tid)
+    };
+  }).sort((a,b) => (b.lastTime||'').localeCompare(a.lastTime||''));
+
+  if (q) threads = threads.filter(t => t.name.toLocaleLowerCase('tr-TR').includes(q));
+
+  if (!threads.length) {
+    el.innerHTML = `<div class="chat-empty" style="padding:20px"><div class="icon">📭</div><div style="font-size:12px">Henüz hiç mesaj yok</div></div>`;
+    return;
+  }
+
+  el.innerHTML = threads.map(t => {
+    const timeStr = t.lastTime ? new Date(t.lastTime).toLocaleDateString('tr-TR', {day:'2-digit', month:'2-digit'}) : '';
+    return `<div class="chat-thread-item ${t.threadId===_activeChatThreadId?'active':''}" onclick="openChatThread('${t.threadId}')">
+      <div class="chat-thread-avatar ${t.type==='technician'?'tech':(t.type==='job'?'job':'')}">${t.type==='job' ? '💼' : escHtml((t.name||'?').charAt(0).toLocaleUpperCase('tr-TR'))}</div>
+      <div class="chat-thread-body">
+        <div class="chat-thread-name">${t.type==='job' ? '' : t.icon + ' '}${escHtml(t.name)}</div>
+        ${t.sub ? `<div class="chat-thread-preview" style="color:var(--primary);font-weight:600">${escHtml(t.sub)}</div>` : ''}
+        <div class="chat-thread-preview">${escHtml(t.lastText || 'Henüz mesaj yok')}</div>
+      </div>
+      <div class="chat-thread-meta">
+        <div class="chat-thread-time">${timeStr}</div>
+        ${t.unread ? `<div class="chat-thread-unread">${t.unread > 9 ? '9+' : t.unread}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// İş listelerindeki (Devam Eden/Tamamlanan İşler) 💬 butonu — doğrudan
+// Mesajlar sayfasına gidip o işin sohbetini açar.
+function goToJobChat(jobId) {
+  showPage('chat', document.querySelector('.nav-item[onclick*="\'chat\'"]'));
+  openChatThread('job_' + jobId);
+}
+
+function openChatThread(threadId) {
+  _activeChatThreadId = threadId;
+  document.getElementById('chat-conv-empty').classList.add('hidden');
+  document.getElementById('chat-conv-active').classList.remove('hidden');
+  const info = resolveThreadInfo(threadId);
+  document.getElementById('chat-conv-header').innerHTML = `${info.icon} <b>${escHtml(info.name)}</b>${info.sub ? `<div style="font-size:11px;color:var(--text-soft);font-weight:400;margin-top:2px">${escHtml(info.sub)}</div>` : ''}`;
+  try { localStorage.setItem('admin_chat_seen_' + threadId, new Date().toISOString()); } catch(e) {}
+  renderChatThreadList();
+  renderChatMessages();
+  updateChatBadge();
+}
+
+function renderChatMessages() {
+  const el = document.getElementById('chat-messages');
+  if (!el || !_activeChatThreadId) return;
+  const thread = _allChats[_activeChatThreadId];
+  const msgs = thread && thread.messages ? Object.values(thread.messages).sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||'')) : [];
+
+  if (!msgs.length) {
+    el.innerHTML = `<div class="chat-empty"><div class="icon">💬</div><div>Henüz mesaj yok</div></div>`;
+  } else {
+    el.innerHTML = msgs.map(m => {
+      const mine = m.senderRole === 'admin';
+      const dt = m.timestamp ? new Date(m.timestamp).toLocaleString('tr-TR', {dateStyle:'short', timeStyle:'short'}) : '';
+      const roleIcon = m.senderRole === 'doctor' ? '👨‍⚕️' : (m.senderRole === 'technician' ? '🔧' : '');
+      let fileHtml = '';
+      if (m.fileUrl) {
+        const isImg = /\.(png|jpe?g|gif|webp)$/i.test(m.fileName||'');
+        fileHtml = isImg
+          ? `<img src="${escHtml(m.fileUrl)}" class="chat-file-img" onclick="window.open('${escHtml(m.fileUrl)}','_blank')">`
+          : `<a href="${escHtml(m.fileUrl)}" target="_blank" rel="noopener" class="chat-file-chip">📎 ${escHtml(m.fileName||'Dosya')}</a>`;
+      }
+      return `<div class="chat-bubble-row ${mine?'mine':'theirs'}">
+        <div class="chat-sender-label">${mine ? 'Siz (Laboratuvar)' : roleIcon + ' ' + escHtml(m.senderName||'')}</div>
+        <div class="chat-bubble">
+          ${m.text ? escHtml(m.text).replace(/\n/g,'<br>') : ''}
+          ${fileHtml}
+        </div>
+        <div class="chat-timestamp">${dt}</div>
+      </div>`;
+    }).join('');
+  }
+  el.scrollTop = el.scrollHeight;
+}
+
+function sendChatMessage() {
+  if (!_activeChatThreadId) return;
+  const input = document.getElementById('chat-text-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const msgId = Date.now();
+  const msg = { id: msgId, senderRole: 'admin', senderId: 'admin', senderName: 'DIGICAD Dental Laboratuvar', text, timestamp: new Date().toISOString() };
+  input.value = '';
+  rtdb.ref(dbPath(`chats/${_activeChatThreadId}/messages/${msgId}`)).set(msg)
+    .catch(err => toast('Mesaj gönderilemedi: ' + err.message, 'error'));
+}
+
+async function onChatFilePicked(fileListObj) {
+  const file = fileListObj[0];
+  if (!file || !_activeChatThreadId) return;
+  const note = document.getElementById('chat-upload-note');
+
+  if (!_adminStorageAuthReady) {
+    note.classList.remove('hidden');
+    let waited = 0;
+    while (!_adminStorageAuthReady && waited < 6000) { await new Promise(r => setTimeout(r, 200)); waited += 200; }
+    note.classList.add('hidden');
+    if (!_adminStorageAuthReady) { toast('Dosya yükleme servisine bağlanılamadı', 'error'); return; }
+  }
+
+  note.textContent = `📤 "${file.name}" yükleniyor…`;
+  note.classList.remove('hidden');
+  try {
+    const path = `chatFiles/${_workspace||'digicad'}/${_activeChatThreadId}/${Date.now()}_${file.name}`;
+    const ref = fbStorage.ref(path);
+    await ref.put(file);
+    const url = await ref.getDownloadURL();
+    const msgId = Date.now();
+    const msg = { id: msgId, senderRole: 'admin', senderId: 'admin', senderName: 'DIGICAD Dental Laboratuvar', text: '', fileUrl: url, fileName: file.name, timestamp: new Date().toISOString() };
+    await rtdb.ref(dbPath(`chats/${_activeChatThreadId}/messages/${msgId}`)).set(msg);
+  } catch (err) {
+    console.error(err);
+    toast('Dosya yüklenemedi: ' + err.message, 'error');
+  } finally {
+    note.classList.add('hidden');
+    document.getElementById('chat-file-input').value = '';
+  }
 }
 
 // ── Tüm DB'yi yaz ────────────────────────────────────
@@ -3104,7 +3609,8 @@ function showPage(id, el) {
     archive:renderArchive, trash:renderTrash, doctors:renderDrNav, techs:renderTechPage,
     mail: () => {}, settings: renderSettingsPage, dispatch: renderDispatch,
     pending: renderPendingPage, expenses: renderExpenses, monthly: renderMonthlyReport,
-    sales: renderSalesPage, order: renderOrderForm, doctorsubs: renderDoctorSubmissions };
+    sales: renderSalesPage, order: renderOrderForm, doctorsubs: renderDoctorSubmissions,
+    chat: renderChatThreadList };
   if (map[id]) map[id]();
 }
 
@@ -3209,13 +3715,15 @@ function renderJobs(resetFilter) {
   if (q)  list = list.filter(j => j.drName.toLowerCase().includes(q)||(j.patient||'').toLowerCase().includes(q));
   if (sf) list = list.filter(j => j.status === sf);
   if (!list.length) { document.getElementById('main-job-list').innerHTML = emptyState('🎉','Devam eden iş yok'); return; }
-  let h = `<table><thead><tr><th>Hekim</th><th>Hasta</th><th>İş</th><th>Teknisyen</th><th>Tutar</th><th>Teslim</th><th>Durum</th><th></th></tr></thead><tbody>`;
+  let h = `<table><thead><tr><th>Hekim</th><th>Hasta</th><th>İş</th><th>Teknisyen</th><th>Tutar</th><th>Teslim</th><th>Tarama</th><th>Tasarım</th><th>Durum</th><th></th></tr></thead><tbody>`;
   list.forEach(j => {
     const overdue = j.dateout && j.dateout < today();
     const tech = j.techId ? techArr().find(t=>t.id===j.techId) : null;
     const mailBadge = j.mailRef ? `<span title="Kaynak: ${escHtml(j.mailFrom||'')}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;margin-left:4px">📧 Mail</span>` : '';
     const colorHex = j.toothColor ? getColorHex(j.toothColor) : '';
     const colorChip = j.toothColor ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;background:#fff;border:1px solid #ddd;margin-left:4px"><span style="width:10px;height:10px;border-radius:3px;background:${colorHex};border:1px solid #ccc;display:inline-block"></span>${j.toothColor}</span>` : '';
+    const scanCount = Array.isArray(j.files) ? j.files.length : 0;
+    const designCount = Array.isArray(j.designFiles) ? j.designFiles.length : 0;
     h += `<tr>
       <td><strong>${j.drName}</strong>${mailBadge}</td>
       <td>${j.patient||'-'}</td>
@@ -3223,6 +3731,8 @@ function renderJobs(resetFilter) {
       <td>${tech ? `<span class="badge-spec">🔧 ${tech.name}</span>` : '<span style="color:var(--text-soft);font-size:11px">Atanmamış</span>'}</td>
       <td class="mono">${fmtMoney(j.price*j.qty, j.currency)}</td>
       <td style="${overdue?'color:var(--danger);font-weight:700':''}">${fmtDate(j.dateout)}${overdue?' ⚠️':''}</td>
+      <td>${scanCount ? `<button class="btn btn-sm btn-outline" title="Hekimin/adminin yüklediği tarama dosyalarını indir" onclick="downloadAllJobFiles(${j.id})">📦 ${scanCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
+      <td>${designCount ? `<button class="btn btn-sm btn-outline" title="Teknisyenin yüklediği tasarım dosyalarını indir" onclick="downloadAllJobDesignFiles(${j.id})">🎨 ${designCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
       <td>${j.status === 'Tamamlama Onayı'
         ? `<div style="display:flex;flex-direction:column;gap:4px;align-items:center">
              <span class="badge badge-pending-done" style="text-align:center">📨 Tamamlama Onayı</span>
@@ -3237,6 +3747,7 @@ function renderJobs(resetFilter) {
           </select>`}
       </td>
       <td><div class="btn-group">
+        <button class="btn btn-sm btn-outline btn-icon" title="Bu iş hakkında sohbet" onclick="goToJobChat(${j.id})">💬</button>
         <button class="btn btn-sm btn-outline btn-icon" title="Düzenle" onclick="openJobEditModal(${j.id})">✏️</button>
         <button class="btn btn-sm btn-danger btn-icon" title="Sil" onclick="delJob(${j.id})">🗑️</button>
       </div></td>
@@ -3262,20 +3773,25 @@ function renderDoneJobs() {
   list.forEach(j => dSums[j.currency||'TRY'] += j.price*j.qty);
   
   let h = `<div style="margin-bottom:12px"><span class="chip">Toplam: ${formatMultiInline(dSums)} · ${list.length} kayıt</span></div>`;
-  h += `<table><thead><tr><th>Hekim</th><th>Hasta</th><th>İş</th><th>Teknisyen</th><th>Tutar</th><th>Teslim</th><th></th></tr></thead><tbody>`;
+  h += `<table><thead><tr><th>Hekim</th><th>Hasta</th><th>İş</th><th>Teknisyen</th><th>Tutar</th><th>Teslim</th><th>Tarama</th><th>Tasarım</th><th></th></tr></thead><tbody>`;
   list.forEach(j => {
     const tech = j.techId ? techArr().find(t=>t.id===j.techId) : null;
     const corrected = Array.isArray(j.corrections) && j.corrections.length > 0;
     const correctedBadge = corrected
       ? `<span onclick="showCorrectionHistory(${j.id});event.stopPropagation()" title="Düzeltme tarihçesini görüntüle" style="display:inline-block;margin-left:6px;background:rgba(245,158,11,.15);color:#b45309;border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:1px 6px;font-size:10px;font-weight:600;cursor:pointer">🛠️ ${j.corrections.length}× düzeltildi</span>`
       : '';
+    const scanCount = Array.isArray(j.files) ? j.files.length : 0;
+    const designCount = Array.isArray(j.designFiles) ? j.designFiles.length : 0;
     h += `<tr>
       <td><strong>${j.drName}</strong>${correctedBadge}</td>
       <td>${j.patient||'-'}</td><td>${j.type||'<span style="color:#9ca3af">—</span>'}</td>
       <td>${tech ? `<span class="badge-spec">🔧 ${tech.name}</span>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
       <td class="mono">${fmtMoney(j.price*j.qty, j.currency)}</td>
       <td>${fmtDate(j.dateout)}</td>
+      <td>${scanCount ? `<button class="btn btn-sm btn-outline" title="Hekimin/adminin yüklediği tarama dosyalarını indir" onclick="downloadAllJobFiles(${j.id})">📦 ${scanCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
+      <td>${designCount ? `<button class="btn btn-sm btn-outline" title="Teknisyenin yüklediği tasarım dosyalarını indir" onclick="downloadAllJobDesignFiles(${j.id})">🎨 ${designCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
       <td><div class="btn-group">
+        <button class="btn btn-sm btn-outline btn-icon" title="Bu iş hakkında sohbet" onclick="goToJobChat(${j.id})">💬</button>
         <button class="btn btn-sm btn-outline btn-icon" title="Düzelt (adet, fiyat, renk vb.)" onclick="openJobEditModal(${j.id})" style="color:#b45309;border-color:rgba(245,158,11,.4)">🛠️</button>
         <button class="btn btn-sm btn-outline" onclick="revertJob(${j.id})">↩ Geri Al</button>
       </div></td>
@@ -3409,6 +3925,9 @@ function openJobEditModal(id) {
   const techSel = document.getElementById('edit-tech');
   techSel.innerHTML = '<option value="">Atanmamış</option>' + techArr().map(t=>`<option value="${t.id}" ${j.techId===t.id?'selected':''}>${t.name} (${t.spec})</option>`).join('');
   buildColorPicker('edit-color-picker', j.toothColor||'');
+  _editJobFiles = Array.isArray(j.files) ? j.files.map(f => ({...f, uploading:false, error:false})) : [];
+  renderEditFilesList();
+  renderEditDesignFilesList(j);
   openModal('job-edit-modal');
 }
 // Düzenleme modalında hekimin fiyat haritası — iş türü seçildiğinde fiyat çekmek için
@@ -3447,10 +3966,161 @@ function onEditTypeChange() {
     if (curEl) curEl.value = match.currency;
   }
 }
+// ── İş Düzenleme Modalında Dosya Yükleme (sistem dışından gelen işler için) ──
+let _editJobFiles = []; // [{name, url, size, uploading, error}]
+
+function renderEditFilesList() {
+  const el = document.getElementById('edit-files-list');
+  if (!el) return;
+  if (!_editJobFiles.length) { el.innerHTML = ''; return; }
+  el.innerHTML = _editJobFiles.map((f, i) => {
+    const icon = f.error ? '⚠️' : (f.uploading ? '⏳' : '📄');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f7f9fb;border-radius:8px;border:1px solid var(--border)">
+      <span>${icon}</span>
+      <span style="flex:1;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(f.name)}</span>
+      ${f.uploading ? `<span style="font-size:10px;color:var(--text-soft)">${f.progress||0}%</span>` : ''}
+      ${f.url ? `<a href="${escHtml(f.url)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--primary)">Görüntüle</a>` : ''}
+      <button type="button" onclick="removeEditFile(${i})" title="Kaldır" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:2px 4px">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removeEditFile(idx) {
+  _editJobFiles.splice(idx, 1);
+  renderEditFilesList();
+}
+
+// ── Teknisyenin yüklediği Tasarım Dosyaları (salt okunur + indirilebilir) ──
+function renderEditDesignFilesList(j) {
+  const group = document.getElementById('edit-design-files-group');
+  const el = document.getElementById('edit-design-files-list');
+  if (!group || !el) return;
+  const files = Array.isArray(j.designFiles) ? j.designFiles : [];
+  if (!files.length) { group.style.display = 'none'; el.innerHTML = ''; return; }
+  group.style.display = 'block';
+  el.innerHTML = files.map(f => `
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f7f9fb;border-radius:8px;border:1px solid var(--border)">
+      <span>🎨</span>
+      <span style="flex:1;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(f.name)}</span>
+      ${f.uploadedBy ? `<span style="font-size:10px;color:var(--text-soft)">${escHtml(f.uploadedBy)}</span>` : ''}
+      <a href="${escHtml(f.url)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--primary)">Görüntüle</a>
+    </div>`).join('');
+}
+
+function _buildDesignInfoText(j) {
+  const lines = [
+    'DIGICAD DENTAL LABORATUVAR — TASARIM DOSYALARI',
+    '='.repeat(56),
+    `Hekim         : ${j.drName || '—'}`,
+    `Hasta         : ${j.patient || '—'}`,
+    `İş Türü       : ${j.type || '—'}`,
+    '',
+    'Bu klasördeki tasarım dosyaları:',
+    ...((Array.isArray(j.designFiles) && j.designFiles.length) ? j.designFiles.map((f,i) => `  ${i+1}. ${f.name}${f.uploadedBy ? ' — ' + f.uploadedBy : ''}`) : ['  —'])
+  ];
+  return lines.join('\r\n');
+}
+
+async function downloadAllJobDesignFiles(jobId) {
+  const j = DB.jobs && DB.jobs[jobId];
+  if (!j) { toast('İş bulunamadı!', 'error'); return; }
+  const files = Array.isArray(j.designFiles) ? j.designFiles : [];
+  if (!files.length) { toast('Bu işte indirilecek tasarım dosyası yok', 'info'); return; }
+  if (typeof JSZip === 'undefined') { toast('ZIP kütüphanesi yüklenemedi', 'error'); return; }
+
+  const folderName = _sanitizeFolderFileName(`TASARIM_${j.drName || 'Hekim'}_${j.patient || 'Hasta'}`);
+  toast(`📦 ${files.length} tasarım dosyası hazırlanıyor…`, 'info');
+
+  try {
+    const zip = new JSZip();
+    const folder = zip.folder(folderName);
+    folder.file('Tasarim_Bilgisi.txt', _buildDesignInfoText(j));
+    let ok = 0;
+    for (const f of files) {
+      try {
+        const resp = await fetch(f.url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const blob = await resp.blob();
+        folder.file(_sanitizeFolderFileName(f.name), blob);
+        ok++;
+      } catch (err) {
+        folder.file(_sanitizeFolderFileName(f.name) + '_INDIRILEMEDI.txt', `Bağlantı: ${f.url}\nHata: ${err.message}`);
+      }
+    }
+    const zipBlob = await zip.generateAsync({type: 'blob'});
+    const zipUrl = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = zipUrl; a.download = `${folderName}.zip`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(zipUrl), 15000);
+    toast(ok === files.length ? `✅ ${files.length} tasarım dosyası indirildi` : `⚠️ ${ok}/${files.length} dosya paketlendi`, ok === files.length ? 'success' : 'error');
+  } catch (err) {
+    console.error(err);
+    toast('❌ İndirme hatası: ' + err.message, 'error');
+  }
+}
+
+(function bindEditDropzone() {
+  const dz = document.getElementById('edit-dropzone');
+  if (!dz) return;
+  ['dragenter','dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.style.borderColor = 'var(--primary)'; dz.style.background = 'var(--primary-light,#e8f0fe)'; }));
+  ['dragleave','drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.style.borderColor = ''; dz.style.background = ''; }));
+  dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) onEditFilesPicked(e.dataTransfer.files); });
+})();
+
+async function onEditFilesPicked(fileListObj) {
+  const files = Array.from(fileListObj);
+  if (!files.length) return;
+
+  const noteEl = document.getElementById('edit-upload-note');
+  if (!_adminStorageAuthReady) {
+    if (noteEl) noteEl.style.display = 'block';
+    let waited = 0;
+    while (!_adminStorageAuthReady && waited < 6000) {
+      await new Promise(r => setTimeout(r, 200));
+      waited += 200;
+    }
+    if (noteEl) noteEl.style.display = 'none';
+    if (!_adminStorageAuthReady) {
+      toast('Dosya yükleme servisine bağlanılamadı — internet bağlantınızı kontrol edin', 'error');
+      document.getElementById('edit-file-input').value = '';
+      return;
+    }
+  }
+
+  const subId = editingJobId || Date.now();
+  files.forEach(file => {
+    const entry = { name: file.name, size: file.size, url: null, uploading: true, error: false, progress: 0 };
+    _editJobFiles.push(entry);
+    renderEditFilesList();
+
+    const path = `adminJobScans/${_workspace||'digicad'}/${subId}/${Date.now()}_${file.name}`;
+    const ref = fbStorage.ref(path);
+    const task = ref.put(file);
+
+    task.on('state_changed',
+      snap => { entry.progress = Math.round((snap.bytesTransferred / snap.totalBytes) * 100); renderEditFilesList(); },
+      err => {
+        console.error('Dosya yükleme hatası:', err);
+        entry.uploading = false; entry.error = true;
+        renderEditFilesList();
+        toast(`"${file.name}" yüklenemedi: ${err.message}`, 'error');
+      },
+      async () => {
+        try { entry.url = await task.snapshot.ref.getDownloadURL(); entry.uploading = false; }
+        catch(e) { entry.error = true; entry.uploading = false; }
+        renderEditFilesList();
+      }
+    );
+  });
+  document.getElementById('edit-file-input').value = '';
+}
+
 function closeJobEditModal() {
   closeModal('job-edit-modal');
   editingJobId = null;
   _editingPendingId = null;
+  _editJobFiles = [];
   // Save butonunu varsayılana döndür
   const saveBtn = document.getElementById('edit-save-btn');
   if (saveBtn) saveBtn.onclick = saveJobEdit;
@@ -3464,6 +4134,7 @@ function closeJobEditModal() {
 }
 function saveJobEdit() {
   const j = DB.jobs[editingJobId]; if (!j) return;
+  if (_editJobFiles.some(f => f.uploading)) { toast('Dosyalar hâlâ yükleniyor, lütfen bekleyin', 'info'); return; }
   // Hekim değişikliği
   const newDrId = parseInt(document.getElementById('edit-doctor').value);
   if (!newDrId) { toast('Hekim seçimi zorunlu!','error'); return; }
@@ -3540,6 +4211,7 @@ function saveJobEdit() {
   j.techId     = newVals.techId;
   const tech = j.techId ? techArr().find(t=>t.id===j.techId) : null;
   j.techName = tech ? tech.name : null;
+  j.files = _editJobFiles.filter(f => f.url).map(f => ({ name: f.name, url: f.url, size: f.size }));
 
   saveDB(); closeJobEditModal();
   // Doğru sayfayı yenile
@@ -3564,20 +4236,21 @@ function saveDoctor() {
   const e = document.getElementById('d-email').value.trim().toLowerCase();
   const u = document.getElementById('d-username').value.trim().toLowerCase();
   const pw = document.getElementById('d-password').value.trim();
+  const autoTechId = parseInt(document.getElementById('d-auto-tech').value) || null;
   if (!n) { toast('Hekim adı boş olamaz!','error'); return; }
   if (drArr().find(d => d.name.toLowerCase()===n.toLowerCase())) { toast('Bu isimde hekim zaten kayıtlı!','error'); return; }
   if (e && drArr().find(d => d.email===e)) { toast('Bu mail başka hekime kayıtlı!','error'); return; }
   if (u && drArr().find(d => (d.username||'').toLowerCase()===u)) { toast('Bu kullanıcı adı başka hekime kayıtlı!','error'); return; }
   if (u && !pw) { toast('Kullanıcı adı girdiyseniz şifre de girmelisiniz!','error'); return; }
   const id = Date.now();
-  const dr = { id, name:n, phone:p, email:e||'', prices:{}, username:u||'', password:pw||'' };
+  const dr = { id, name:n, phone:p, email:e||'', prices:{}, username:u||'', password:pw||'', autoTechId };
   DB.doctors[id] = dr;
   if (e && !DB.mailFilters.includes(e)) DB.mailFilters.push(e);
   saveDB();
   document.getElementById('d-name').value=''; document.getElementById('d-phone').value=''; document.getElementById('d-email').value='';
-  document.getElementById('d-username').value=''; document.getElementById('d-password').value='';
+  document.getElementById('d-username').value=''; document.getElementById('d-password').value=''; document.getElementById('d-auto-tech').value='';
   renderDrNav(); renderMailFilterList();
-  toast('👨‍⚕️ Hekim eklendi' + (e ? ' — mail filtresi eklendi' : '') + (u ? ' — portal girişi tanımlandı' : ''));
+  toast('👨‍⚕️ Hekim eklendi' + (e ? ' — mail filtresi eklendi' : '') + (u ? ' — portal girişi tanımlandı' : '') + (autoTechId ? ' — otomatik teknisyen ayarlandı' : ''));
 }
 function deleteDoctor() {
   const dr = drArr().find(d => d.id===DB.activeDr); if (!dr) return;
@@ -3592,6 +4265,15 @@ function deleteDoctor() {
 function renderDrNav() {
   const el = document.getElementById('dr-list-nav');
   if (!el) return;
+
+  // "Yeni Hekim" formundaki otomatik teknisyen listesini doldur (sadece bir kez)
+  const autoTechSel = document.getElementById('d-auto-tech');
+  if (autoTechSel && autoTechSel.dataset.populated !== '1') {
+    autoTechSel.innerHTML = '<option value="">— Yok, onay bekleyene düşsün —</option>' +
+      techArr().map(t => `<option value="${t.id}">${escHtml(t.name)}${t.spec?' ('+escHtml(t.spec)+')':''}</option>`).join('');
+    autoTechSel.dataset.populated = '1';
+  }
+
   if (!drArr().length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-soft);text-align:center;padding:20px">Henüz hekim eklenmedi.</p>'; return; }
   el.innerHTML = drArr().map(d => `
     <div class="dr-card ${DB.activeDr===d.id?'selected':''}" data-drid="${d.id}" onclick="selectDr(${d.id})">
@@ -3599,6 +4281,7 @@ function renderDrNav() {
         <div style="font-weight:600;font-size:13px">${d.name}</div>
         ${d.phone?`<div style="font-size:11px;color:var(--text-soft)">${d.phone}</div>`:''}
         ${d.email?`<div style="font-size:10px;color:var(--primary)">✉️ ${d.email}</div>`:''}
+        ${d.autoTechId ? `<div style="font-size:10px;color:#a21caf;margin-top:2px">⚡ Otomatik: ${escHtml(techArr().find(t=>t.id===d.autoTechId)?.name||'—')}</div>` : ''}
       </div>
       <span style="font-size:11px;color:var(--text-soft)">${(d.prices||[]).length} fiyat</span>
     </div>`).join('');
@@ -3893,6 +4576,10 @@ function openDrEmailModal() {
   document.getElementById('dr-email-input').value = dr.email || '';
   document.getElementById('dr-username-input').value = dr.username || '';
   document.getElementById('dr-password-input').value = dr.password || '';
+  const autoTechSel = document.getElementById('dr-auto-tech-input');
+  autoTechSel.innerHTML = '<option value="">— Yok, onay bekleyene düşsün —</option>' +
+    techArr().map(t => `<option value="${t.id}">${escHtml(t.name)}${t.spec?' ('+escHtml(t.spec)+')':''}</option>`).join('');
+  autoTechSel.value = dr.autoTechId || '';
   openModal('dr-email-modal');
 }
 function closeDrEmailModal() { closeModal('dr-email-modal'); }
@@ -3914,6 +4601,7 @@ function _saveDrEmailInner() {
   const e   = document.getElementById('dr-email-input').value.trim().toLowerCase();
   const newUsername = document.getElementById('dr-username-input').value.trim().toLowerCase();
   const newPassword = document.getElementById('dr-password-input').value.trim();
+  const newAutoTechId = parseInt(document.getElementById('dr-auto-tech-input').value) || null;
 
   // Validasyonlar
   // ÖNEMLİ: Çakışma kontrolleri SADECE ilgili alan gerçekten DEĞİŞTİRİLDİYSE
@@ -3964,6 +4652,7 @@ function _saveDrEmailInner() {
   dr.email = e;
   dr.username = newUsername || '';
   dr.password = newPassword || '';
+  dr.autoTechId = newAutoTechId;
 
   const changes = [];
   if (nameChanged)  changes.push('ad');
@@ -4272,6 +4961,11 @@ function selectWorkspace(ws) {
   _workspace = ws;
   try { localStorage.setItem('primer_dental_last_workspace', ws); } catch(e) {}
 
+  // Önceki workspace'in sohbet dinleyicisini/verisini kapat — aksi halde
+  // "Mesajlar" sayfası yeni workspace'e geçtikten sonra bile eski workspace'in
+  // sohbetlerini göstermeye devam ederdi.
+  stopChatDataListener();
+
   // UI güncelle
   const cfg = WS_CONFIG[ws];
   document.title = cfg.title;
@@ -4303,6 +4997,8 @@ function backToWorkspace() {
   if (!isOfflineWorkspace()) {
     try { rtdb.ref(dbPath()).off(); } catch(e) {}
   }
+  stopChatDataListener();
+  _prevJobStatuses = null; // yeni workspace'in ilk yüklemesinde yanlış "az önce tamamlandı" bildirimi tetiklenmesin
   _workspace = null;
   document.getElementById('ws-screen').style.display = 'flex';
 }
@@ -5756,6 +6452,7 @@ function dCard(j, assigned) {
       </div>
       ${j.mailRef ? '<div style="font-size:9px;color:var(--accent);margin-top:4px">📧 Mailden geldi</div>' : ''}
       ${Array.isArray(j.files) && j.files.length ? `<button class="ab" style="margin-top:4px;background:var(--primary-light,#e8f0fe);color:var(--primary)" onclick="event.stopPropagation();downloadAllJobFiles(${j.id})">📦 ${j.files.length} dosya indir</button>` : ''}
+      ${Array.isArray(j.designFiles) && j.designFiles.length ? `<button class="ab" style="margin-top:4px;background:#fdf4ff;color:#a21caf" onclick="event.stopPropagation();downloadAllJobDesignFiles(${j.id})">🎨 ${j.designFiles.length} tasarım indir</button>` : ''}
     </div>`;
   }
   return `<div class="d-card ${cls}" onclick="openAssignModal(${j.id})">
@@ -5776,6 +6473,7 @@ function dCard(j, assigned) {
     </div>
     ${j.mailRef ? '<div style="font-size:9px;color:var(--accent);margin-top:4px">📧 Mailden geldi</div>' : ''}
     ${Array.isArray(j.files) && j.files.length ? `<button class="ab" style="margin-top:4px;background:var(--primary-light,#e8f0fe);color:var(--primary)" onclick="event.stopPropagation();downloadAllJobFiles(${j.id})">📦 ${j.files.length} dosya indir</button>` : ''}
+      ${Array.isArray(j.designFiles) && j.designFiles.length ? `<button class="ab" style="margin-top:4px;background:#fdf4ff;color:#a21caf" onclick="event.stopPropagation();downloadAllJobDesignFiles(${j.id})">🎨 ${j.designFiles.length} tasarım indir</button>` : ''}
   </div>`;
 }
 
@@ -6074,6 +6772,7 @@ function autoTechQuickPrice() {
 // ═══════════════════════════════════════════════════════
 const ORDER_MATERIALS = ['ZIRCONIA', 'METAL DESTEKLİ PORSELEN', 'EMAX', 'LAMİNE', 'PMMA', 'TITANIUM'];
 let _orderSelectedTeeth = new Set(); // FDI numaraları
+let _orderUpHandlersBound = false; // Sipariş Formu'ndaki büyük harf dönüştürücülerin bir kez bağlandığını takip eder
 
 // FDI diş numaraları
 const FDI_QUADRANTS = {
@@ -6331,6 +7030,9 @@ function submitOrderForm() {
 
   const groupId = Date.now() + 1;
   const createdIds = [];
+  // Bu hekim için "Otomatik Teknisyen" tanımlıysa, iş onay beklemeden doğrudan
+  // o teknisyene atanmış olarak "Devam Eden İşler"e düşer.
+  const autoTech = f.dr.autoTechId ? techArr().find(t => t.id === f.dr.autoTechId) : null;
 
   lines.forEach((line, idx) => {
     const id = groupId + idx; // her kalem için benzersiz ardışık id
@@ -6343,37 +7045,67 @@ function submitOrderForm() {
     if (f.notes) combinedNote += f.notes;
     combinedNote = combinedNote.trim();
 
-    // 1) Onay Bekleyen kaydı
-    DB.pendingJobs[id] = {
-      id,
-      drId: f.dr.id, drName: f.dr.name,
-      patient:  f.patient,
-      type:     finalType,
-      price:    line.price || 0,
-      currency: line.currency || 'TRY',
-      qty:      line.qty || 1,
-      dateout:  f.dateout,
-      toothColor: f.color,
-      techId:   null,
-      techName: 'Sipariş Formu',
-      note:     combinedNote,
-      files:    sourceSubFiles,
-      orderGroupId: multiLine ? groupId : null,
-      orderGroupIndex: multiLine ? idx : null,
-      orderGroupTotal: multiLine ? lines.length : null,
-      orderForm: {
-        teeth: f.teeth,
-        material: f.material,
-        jobType: finalType,
-        doctorName: f.doctorName,
-        color: f.color,
-        notes: f.notes
-      },
-      submittedAt: new Date().toISOString(),
-      status: 'Onay Bekliyor'
-    };
+    if (autoTech) {
+      // 1) Onay ADIMI ATLANIR — doğrudan gerçek iş kaydı oluşturulur
+      DB.jobs[id] = {
+        id,
+        drId: f.dr.id, drName: f.dr.name,
+        patient:  f.patient,
+        type:     finalType,
+        price:    line.price || 0,
+        currency: line.currency || 'TRY',
+        qty:      line.qty || 1,
+        dateout:  f.dateout,
+        techId:   autoTech.id,
+        techName: autoTech.name,
+        toothColor: f.color,
+        status: 'Bekliyor',
+        deleted: false,
+        approvedFrom: null,
+        approvedAt: new Date().toISOString(),
+        note: combinedNote,
+        files: sourceSubFiles,
+        sourceDoctorSubmissionId: _importedDoctorSubId || null,
+        orderGroupId: multiLine ? groupId : null,
+        orderGroupIndex: multiLine ? idx : null,
+        orderGroupTotal: multiLine ? lines.length : null,
+        orderForm: { teeth: f.teeth, material: f.material, jobType: finalType, doctorName: f.doctorName, color: f.color, notes: f.notes },
+        autoAssigned: true // bu iş "Otomatik Teknisyen" ayarı sayesinde onaysız direkt düştü
+      };
+    } else {
+      // 1) Onay Bekleyen kaydı
+      DB.pendingJobs[id] = {
+        id,
+        drId: f.dr.id, drName: f.dr.name,
+        patient:  f.patient,
+        type:     finalType,
+        price:    line.price || 0,
+        currency: line.currency || 'TRY',
+        qty:      line.qty || 1,
+        dateout:  f.dateout,
+        toothColor: f.color,
+        techId:   null,
+        techName: 'Sipariş Formu',
+        note:     combinedNote,
+        files:    sourceSubFiles,
+        sourceDoctorSubmissionId: _importedDoctorSubId || null, // Hekim Portalı'ndaki gerçek zamanlı durum takibi için
+        orderGroupId: multiLine ? groupId : null,
+        orderGroupIndex: multiLine ? idx : null,
+        orderGroupTotal: multiLine ? lines.length : null,
+        orderForm: {
+          teeth: f.teeth,
+          material: f.material,
+          jobType: finalType,
+          doctorName: f.doctorName,
+          color: f.color,
+          notes: f.notes
+        },
+        submittedAt: new Date().toISOString(),
+        status: 'Onay Bekliyor'
+      };
+    }
 
-    // 2) Sipariş Formu arşivi (kalıcı kayıt)
+    // 2) Sipariş Formu arşivi (kalıcı kayıt) — her durumda oluşturulur
     DB.orderForms[id] = {
       id,
       createdAt: new Date().toISOString(),
@@ -6390,7 +7122,7 @@ function submitOrderForm() {
       teeth: f.teeth,
       price: line.price || 0,
       currency: line.currency || 'TRY',
-      pendingJobId: id,   // Onay Bekleyen ile aynı ID
+      pendingJobId: autoTech ? null : id,   // Onay Bekleyen ile aynı ID (otomatik atamada pendingJob hiç oluşmaz)
       printed: false,
       printedAt: null,
       orderGroupId: multiLine ? groupId : null,
@@ -6432,9 +7164,11 @@ function submitOrderForm() {
   // Geçmiş formlar listesini yenile
   renderOrderHistory();
 
-  toast(multiLine
-    ? `📤 ${lines.length} kalem, ${lines.length} ayrı iş olarak onay bekleyen işlere gönderildi — şimdi yazdırabilirsiniz`
-    : '📤 Sipariş onay bekleyen işlere gönderildi — şimdi yazdırabilirsiniz', 'success');
+  toast(autoTech
+    ? `⚡ ${lines.length > 1 ? lines.length + ' kalem' : 'İş'} onay beklemeden doğrudan ${autoTech.name}'e atandı — Devam Eden İşler'de görünüyor`
+    : (multiLine
+        ? `📤 ${lines.length} kalem, ${lines.length} ayrı iş olarak onay bekleyen işlere gönderildi — şimdi yazdırabilirsiniz`
+        : '📤 Sipariş onay bekleyen işlere gönderildi — şimdi yazdırabilirsiniz'), 'success');
 
   // FORM TEMİZLENMEZ — kullanıcı yazdırmak isteyebilir, "Yeni Form" butonuyla sıfırlanır
 }
@@ -6689,17 +7423,63 @@ function deleteOrderForm(id) {
 // ═══════════════════════════════════════════════════════
 const doctorSubArr = () => toArr(DB.doctorSubmissions).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
 
+// Bir hekim talebinin hangi sekmeye ait olduğunu belirler:
+// 'new' = henüz aktarılmamış (Yeni/İncelendi), 'done' = aktarılmış VE bağlı
+// tüm işler Tamamlandı, 'transferred' = aktarılmış ama hâlâ üretim aşamasında
+function getDoctorSubmissionCategory(s) {
+  if (!s.status || s.status === 'Yeni' || s.status === 'İncelendi') return 'new';
+  let linkedJobs = jobArr().filter(j => j.sourceDoctorSubmissionId === s.id && !j.deleted);
+  // ESKİ KAYITLAR İÇİN YEDEK EŞLEŞTİRME: bu bağlantı alanı sonradan eklendi,
+  // ondan önce aktarılmış talepler için doğrudan bağlantı yoktur — hekim +
+  // hasta adı eşleşmesiyle en iyi çabayla (best-effort) eşleştirilir.
+  if (!linkedJobs.length) {
+    const subPatient = (s.patient||'').trim().toLocaleUpperCase('tr-TR');
+    if (subPatient) {
+      linkedJobs = jobArr().filter(j => !j.deleted && j.drId === s.drId &&
+        (j.patient||'').trim().toLocaleUpperCase('tr-TR') === subPatient);
+    }
+  }
+  if (linkedJobs.length && linkedJobs.every(j => j.status === 'Tamamlandı')) return 'done';
+  return 'transferred';
+}
+
+let doctorSubsTab = 'new';
+function setDoctorSubsTab(tab) {
+  doctorSubsTab = tab;
+  document.getElementById('ds-tab-new').classList.toggle('active', tab === 'new');
+  document.getElementById('ds-tab-transferred').classList.toggle('active', tab === 'transferred');
+  document.getElementById('ds-tab-done').classList.toggle('active', tab === 'done');
+  renderDoctorSubmissions();
+}
+
 function renderDoctorSubmissions() {
   const el = document.getElementById('doctorsubs-list');
   if (!el) return;
   const q = (document.getElementById('ds-search')?.value || '').toLocaleLowerCase('tr-TR');
-  let list = doctorSubArr();
+  const all = doctorSubArr();
+
+  // Sekme sayaçlarını her zaman (aramadan bağımsız) güncelle
+  const counts = { new: 0, transferred: 0, done: 0 };
+  all.forEach(s => { counts[getDoctorSubmissionCategory(s)]++; });
+  const cntNewEl = document.getElementById('ds-cnt-new');
+  const cntTrEl  = document.getElementById('ds-cnt-transferred');
+  const cntDoneEl= document.getElementById('ds-cnt-done');
+  if (cntNewEl) cntNewEl.textContent = counts.new;
+  if (cntTrEl)  cntTrEl.textContent  = counts.transferred;
+  if (cntDoneEl) cntDoneEl.textContent = counts.done;
+
+  let list = all.filter(s => getDoctorSubmissionCategory(s) === doctorSubsTab);
   if (q) list = list.filter(s =>
     (s.doctorName||'').toLocaleLowerCase('tr-TR').includes(q) ||
     (s.patient||'').toLocaleLowerCase('tr-TR').includes(q));
 
   if (!list.length) {
-    el.innerHTML = emptyState('📭', 'Hekimden gelen iş yok', 'Hekim Portalı üzerinden gönderilen talepler burada listelenir.');
+    const emptyMsgs = {
+      new: ['📭', 'Yeni gelen iş yok', 'Hekim Portalı üzerinden gönderilen yeni talepler burada listelenir.'],
+      transferred: ['📤', 'Aktarılmış iş yok', 'Sipariş Formu\'na aktarılıp onaya gönderilen ama henüz tamamlanmamış işler burada listelenir.'],
+      done: ['✅', 'Tamamlanmış iş yok', 'Üretimi biten işler burada listelenir.']
+    };
+    el.innerHTML = emptyState(...emptyMsgs[doctorSubsTab]);
     return;
   }
 
@@ -6709,12 +7489,15 @@ function renderDoctorSubmissions() {
   </tr></thead><tbody>`;
 
   list.forEach(s => {
+    const category = getDoctorSubmissionCategory(s);
     const isNew = !s.status || s.status === 'Yeni';
     const statusBadge = isNew
       ? `<span class="badge" style="background:var(--accent);color:#fff">🆕 Yeni</span>`
-      : s.status === 'Aktarıldı'
-        ? `<span class="badge" style="background:var(--success);color:#fff">✅ Aktarıldı</span>`
-        : `<span class="badge" style="background:var(--text-soft);color:#fff">👁️ İncelendi</span>`;
+      : category === 'done'
+        ? `<span class="badge" style="background:var(--success);color:#fff">✅ Tamamlandı</span>`
+        : s.status === 'Aktarıldı'
+          ? `<span class="badge" style="background:#f59e0b;color:#fff">📤 Aktarıldı — Üretimde</span>`
+          : `<span class="badge" style="background:var(--text-soft);color:#fff">👁️ İncelendi</span>`;
     const dateStr = s.createdAt ? new Date(s.createdAt).toLocaleString('tr-TR') : '—';
     const teeth = Array.isArray(s.teeth) ? s.teeth.slice().sort((a,b)=>a-b) : [];
     const jawLabel = s.jaw === 'upper' ? 'Üst Çene' : s.jaw === 'lower' ? 'Alt Çene' : (s.jaw === 'both' ? 'Üst + Alt' : '—');
@@ -6742,7 +7525,9 @@ function renderDoctorSubmissions() {
       <td style="font-size:12px;max-width:180px;white-space:normal">${escHtml(s.notes||'')}</td>
       <td style="text-align:right;white-space:nowrap">
         ${files.length ? `<button class="btn btn-sm btn-outline" title="Tüm dosyaları hekim/hasta adıyla bir klasöre indir" onclick="downloadAllSubmissionFiles(${s.id})">📦 Tümünü İndir</button>` : ''}
-        <button class="btn btn-sm btn-primary" title="Sipariş Formu'na aktar" onclick="importDoctorSubmissionToOrderForm(${s.id})">📝 Forma Aktar</button>
+        ${s.status !== 'Aktarıldı'
+          ? `<button class="btn btn-sm btn-primary" title="Sipariş Formu'na aktar" onclick="importDoctorSubmissionToOrderForm(${s.id})">📝 Forma Aktar</button>`
+          : `<span class="badge-spec" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0" title="Bu talep zaten Sipariş Formu'na aktarılıp onaya gönderildi">✅ İşleme Alındı</span>`}
         <button class="btn btn-sm btn-outline btn-icon" title="Silme" onclick="deleteDoctorSubmission(${s.id})">🗑️</button>
       </td>
     </tr>`;
@@ -6930,26 +7715,52 @@ async function downloadAllJobFiles(jobId) {
 function importDoctorSubmissionToOrderForm(id) {
   const sub = DB.doctorSubmissions && DB.doctorSubmissions[id];
   if (!sub) { toast('Kayıt bulunamadı!', 'error'); return; }
+  if (sub.status === 'Aktarıldı') {
+    if (!confirm('Bu talep zaten Sipariş Formu\'na aktarılıp onaya gönderilmiş. Yine de TEKRAR aktarmak istiyor musunuz? (Bu, aynı iş için ikinci bir kayıt oluşturur — mükerrer olmasın diye dikkatli olun)')) return;
+  }
 
+  // showPage('order', ...) sayfa içeriğini (renderOrderForm) SENKRON olarak
+  // çizer — yani bu satır bittiğinde #of-doctor-sel, #of-jobtype-lines,
+  // #of-tooth-chart artık DOM'dadır. Önceki setTimeout tabanlı gecikmeli
+  // deneme mantığı gereksiz bir kırılganlık kaynağıydı, kaldırıldı.
   showPage('order', document.querySelector('.nav-item[onclick*="\'order\'"]'));
 
-  setTimeout(() => {
+  try {
+    _fillOrderFormFromSubmission(sub, id);
+  } catch (err) {
+    console.error('Hekimden gelen talep forma aktarılırken hata:', err);
+    toast('❌ Forma aktarma hatası: ' + (err && err.message ? err.message : err) + ' — konsolu (F12) kontrol edin', 'error');
+  }
+}
+
+function _fillOrderFormFromSubmission(sub, id) {
     // Hekim seç
     const drSel = document.getElementById('of-doctor-sel');
+    let matchedDr = null;
     if (drSel) {
-      const dr = drArr().find(d => d.id === sub.drId || (d.name||'').toLocaleUpperCase('tr-TR') === (sub.doctorName||'').toLocaleUpperCase('tr-TR'));
-      if (dr) { drSel.value = dr.id; onOrderDoctorChange(); }
+      matchedDr = drArr().find(d => d.id === sub.drId) ||
+        drArr().find(d => (d.name||'').trim().toLocaleUpperCase('tr-TR') === (sub.doctorName||'').trim().toLocaleUpperCase('tr-TR')) ||
+        drArr().find(d => (d.name||'').trim().toLowerCase() === (sub.doctorName||'').trim().toLowerCase());
+      if (matchedDr) {
+        drSel.value = matchedDr.id;
+        onOrderDoctorChange();
+      } else {
+        console.warn('Hekim otomatik eşleştirilemedi. sub.drId:', sub.drId, 'sub.doctorName:', sub.doctorName);
+        toast('⚠️ Hekim otomatik eşleştirilemedi — lütfen "Klinik / Hekim" alanını elle seçin', 'error');
+        _orderJobTypePrices = []; // önceki hekimden kalan fiyat listesini kullanma, serbest metne düş
+      }
     }
     // İş Türü/Türleri: hekimin Hekim Portalı'nda seçtiği kalemleri otomatik ata
     // (yeni çok kalemli "jobTypes" alanı varsa onu kullan, yoksa eski tek "jobType" alanına geri düş)
     const subJobTypes = Array.isArray(sub.jobTypes) && sub.jobTypes.length
       ? sub.jobTypes
       : (sub.jobType ? [{ type: sub.jobType, qty: (sub.teeth||[]).length || 1 }] : []);
-    if (subJobTypes.length) {
-      document.getElementById('of-jobtype-lines').innerHTML = '';
+    const jtLinesContainer = document.getElementById('of-jobtype-lines');
+    if (subJobTypes.length && jtLinesContainer) {
+      jtLinesContainer.innerHTML = '';
       subJobTypes.forEach(jt => {
         const lineEl = _buildOrderJobTypeLineEl();
-        document.getElementById('of-jobtype-lines').appendChild(lineEl);
+        jtLinesContainer.appendChild(lineEl);
         const typeEl = lineEl.querySelector('.of-jt-type');
         const qtyEl  = lineEl.querySelector('.of-jt-qty');
         let matched = null;
@@ -6996,12 +7807,15 @@ function importDoctorSubmissionToOrderForm(id) {
     _refreshSelectedTeethDisplay();
     const qtyEl = document.getElementById('of-qty');
     if (qtyEl && _orderSelectedTeeth.size > 0) qtyEl.value = _orderSelectedTeeth.size;
+    const dateEl = document.getElementById('of-dateout');
+    if (dateEl && !dateEl.value) dateEl.value = today();
 
     // Kaynak takibi: onaya gönderildiğinde işaretlemek için
     _importedDoctorSubId = id;
 
-    toast('📥 Hekim talebi forma aktarıldı — kontrol edip "Onaya Gönder" e basın', 'info');
-  }, 60);
+    toast(matchedDr
+      ? '📥 Hekim talebi forma aktarıldı — kontrol edip "Onaya Gönder" e basın'
+      : '📥 Hekim talebi kısmen aktarıldı (hekim seçimi elle yapılmalı)', 'info');
 }
 
 let _importedDoctorSubId = null;
@@ -7099,13 +7913,58 @@ function renderPendingPage() {
 }
 
 // 📥 GELEN İŞ ONAYI (mevcut pendingJobs)
+function clearPendingFilters() {
+  const searchEl = document.getElementById('pending-search');
+  const techEl = document.getElementById('pending-tech-filter');
+  const fromEl = document.getElementById('pending-date-from');
+  const toEl = document.getElementById('pending-date-to');
+  if (searchEl) searchEl.value = '';
+  if (techEl) techEl.value = '';
+  if (fromEl) fromEl.value = '';
+  if (toEl) toEl.value = '';
+  renderIncomingApprovalList();
+}
 function renderIncomingApprovalList() {
   const el = document.getElementById('pending-job-list');
   if (!el) return;
-  const list = pendingArr().sort((a, b) => b.id - a.id);
+
+  // Teknisyen filtre listesini doldur (sadece bir kez gerçek seçenekleri kaybetmeden güncelle)
+  const techFilterEl = document.getElementById('pending-tech-filter');
+  if (techFilterEl && techFilterEl.dataset.populated !== '1') {
+    const currentVal = techFilterEl.value;
+    techFilterEl.innerHTML = '<option value="">Tümü</option><option value="__unassigned__">Atanmamış</option>' +
+      techArr().map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
+    techFilterEl.value = currentVal || '';
+    techFilterEl.dataset.populated = '1';
+  }
+
+  const q = (document.getElementById('pending-search')?.value || '').toLocaleLowerCase('tr-TR');
+  const techFilter = document.getElementById('pending-tech-filter')?.value || '';
+  const dateFrom = document.getElementById('pending-date-from')?.value || '';
+  const dateTo = document.getElementById('pending-date-to')?.value || '';
+
+  let list = pendingArr().sort((a, b) => b.id - a.id);
+
+  if (q) {
+    list = list.filter(p =>
+      (p.drName||'').toLocaleLowerCase('tr-TR').includes(q) ||
+      (p.patient||'').toLocaleLowerCase('tr-TR').includes(q) ||
+      (p.type||'').toLocaleLowerCase('tr-TR').includes(q) ||
+      (p.techName||'').toLocaleLowerCase('tr-TR').includes(q));
+  }
+  if (techFilter === '__unassigned__') {
+    list = list.filter(p => !p.techId);
+  } else if (techFilter) {
+    list = list.filter(p => String(p.techId) === techFilter);
+  }
+  if (dateFrom) list = list.filter(p => p.dateout && p.dateout >= dateFrom);
+  if (dateTo)   list = list.filter(p => p.dateout && p.dateout <= dateTo);
 
   if (!list.length) {
-    el.innerHTML = emptyState('📭', 'Gelen iş onayı yok', 'Sipariş formu veya teknisyen iş girişi geldiğinde burada görünür.');
+    const hasFilters = q || techFilter || dateFrom || dateTo;
+    el.innerHTML = hasFilters
+      ? emptyState('🔍', 'Sonuç bulunamadı', 'Arama/filtre kriterlerinize uyan bir kayıt yok.')
+      : emptyState('📭', 'Gelen iş onayı yok', 'Sipariş formu veya teknisyen iş girişi geldiğinde burada görünür.');
     return;
   }
 
@@ -7263,12 +8122,17 @@ function openPendingEditModal(id) {
 
   buildColorPicker('edit-color-picker', p.toothColor || '');
 
+  _editJobFiles = Array.isArray(p.files) ? p.files.map(f => ({...f, uploading:false, error:false})) : [];
+  renderEditFilesList();
+  document.getElementById('edit-design-files-group').style.display = 'none'; // Onay bekleyen kayıtlarda henüz tasarım dosyası olmaz
+
   openModal('job-edit-modal');
 }
 
 function savePendingEdit() {
   const p = DB.pendingJobs[_editingPendingId];
   if (!p) { closeJobEditModal(); return; }
+  if (_editJobFiles.some(f => f.uploading)) { toast('Dosyalar hâlâ yükleniyor, lütfen bekleyin', 'info'); return; }
 
   const newDrId = parseInt(document.getElementById('edit-doctor').value);
   if (!newDrId) { toast('Hekim seçimi zorunlu!','error'); return; }
@@ -7303,6 +8167,7 @@ function savePendingEdit() {
   // Düzenleme zamanını kaydet
   p.editedAt = new Date().toISOString();
   p.editedBy = 'admin';
+  p.files = _editJobFiles.filter(f => f.url).map(f => ({ name: f.name, url: f.url, size: f.size }));
 
   saveDB();
   closeJobEditModal();
@@ -7320,20 +8185,16 @@ function approvePendingJob(id) {
   if (!p) return;
   if (!confirm(`"${p.patient}" için ${p.type || 'iş'} kaydını onaylayıp ana listeye eklemek istiyor musunuz?`)) return;
 
-  // Teknisyen ataması mantığı — ARTIK OTOMATİK ATAMA YOK:
-  // - Eğer kayıt bir teknisyenin kendi girişiyse (submittedBy === 'tech') → teknisyenin
-  //   kendi seçtiği ataması KORUNUR (bu otomatik değil, teknisyenin kendi beyanıdır).
-  // - Diğer TÜM durumlar (Sipariş Formu, Hekimden Gelenler, Gelen İşler Paneli, eski
-  //   kayıtlar) → iş HER ZAMAN atanmamış (techId: null) olarak ana listeye eklenir.
-  //   Atama, İş Dağıtım Merkezi'nden admin tarafından elle yapılmalıdır.
-  let techId, techName;
-  if (p.submittedBy === 'tech') {
-    techId = p.techId || null;
-    techName = p.techName || null;
-  } else {
-    techId = null;
-    techName = null;
-  }
+  // Teknisyen ataması mantığı — OTOMATİK atama hâlâ YOK, ama ELLE yapılmış
+  // atama (bu düzenleme penceresinden "Teknisyen" alanından seçilmiş olan)
+  // artık KORUNUYOR. Daha önce burada sadece teknisyenin kendi girişini
+  // (submittedBy === 'tech') koruyup, admin'in "Onay Bekleyen İşi Düzenle"den
+  // elle seçtiği teknisyeni de siliyorduk — bu yanlıştı, düzeltildi.
+  // techId'nin bu noktada dolu olmasının TEK yolu zaten ya teknisyenin kendi
+  // girişi ya da adminin bilinçli seçimidir; sistemde hiçbir yerde otomatik
+  // atama yapılmıyor, o yüzden burada varsa doğrudan güvenle kullanılabilir.
+  const techId = p.techId || null;
+  const techName = techId ? (p.techName || (techArr().find(t => t.id === techId)?.name) || null) : null;
 
   const jobId = Date.now();
   DB.jobs[jobId] = {
@@ -7357,6 +8218,7 @@ function approvePendingJob(id) {
     orderGroupId: p.orderGroupId || null,
     orderGroupIndex: p.orderGroupIndex ?? null,
     orderGroupTotal: p.orderGroupTotal || null,
+    sourceDoctorSubmissionId: p.sourceDoctorSubmissionId || null, // Hekim Portalı canlı durum takibi
     sourceType: p.submittedBy === 'tech' ? 'tech_order_form' : 'manual'
   };
   delete DB.pendingJobs[id];
