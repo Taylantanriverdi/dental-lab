@@ -1013,6 +1013,7 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
         <div class="nav-item" onclick="showPage('dispatch',this)"><span class="nav-icon">🎯</span>İş Dağıtım Merkezi<span class="nav-badge" id="badge-dispatch" style="display:none;background:var(--warning)">0</span></div>
         <div class="nav-item active" onclick="showPage('jobs',this)"><span class="nav-icon">📋</span>Devam Eden İşler<span class="nav-badge" id="badge-jobs">0</span></div>
         <div class="nav-item" onclick="showPage('done',this)"><span class="nav-icon">✅</span>Tamamlanan İşler</div>
+        <div class="nav-item" onclick="showPage('files',this)"><span class="nav-icon">🗂️</span>Dosyalar</div>
         <div class="nav-item" onclick="showPage('doctors',this)"><span class="nav-icon">👨‍⚕️</span>Hekimler</div>
         <div class="nav-item" onclick="showPage('techs',this)"><span class="nav-icon">🔧</span>Teknisyenler</div>
       </div>
@@ -1148,6 +1149,21 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
         </div>
       </div>
       <div class="card"><div id="done-job-list"></div></div>
+    </section>
+
+    <section id="page-files" class="section">
+      <div class="page-header">
+        <div class="page-title"><h2>🗂️ Dosyalar</h2></div>
+        <div class="filter-row" style="margin:0">
+          <input type="text" class="inp" placeholder="🔍 Hekim, hasta veya teknisyen ara..." id="files-search" oninput="renderFilesPage()" style="width:260px">
+        </div>
+      </div>
+      <div class="tab-group" style="margin-bottom:16px">
+        <div class="tab-item active" id="files-tab-doctor" onclick="switchFilesTab('doctor')">📥 Hekimden Gelenler</div>
+        <div class="tab-item" id="files-tab-design" onclick="switchFilesTab('design')">🎨 Tasarımdaki İşler</div>
+        <div class="tab-item" id="files-tab-tech" onclick="switchFilesTab('tech')">✅ Tasarımı Tamamlanan</div>
+      </div>
+      <div class="card"><div id="files-list"></div></div>
     </section>
 
     <section id="page-doctors" class="section">
@@ -2670,6 +2686,7 @@ function isOfflineWorkspace() {
 
 // ── Firebase → Yerel belleğe yükle ──────────────────
 let _prevJobStatuses = null; // "Tamamlandı" bildirimi için bir önceki iş durumları anlık görüntüsü
+let _prevDesignTimestamps = null; // "Tasarım Yüklendi" bildirimi için bir önceki designFilesUpdatedAt anlık görüntüsü
 
 // Sol alt köşede, elle kapatılana kadar KAPANMAYAN "İş Tamamlandı" bildirimi
 function showCompletionNotification(job) {
@@ -2687,6 +2704,34 @@ function showCompletionNotification(job) {
       <div class="cn-title">İş Tamamlandı</div>
       <div class="cn-detail"><b>${escHtml(job.patient||'—')}</b>${job.type ? ' — ' + escHtml(job.type) : ''}</div>
       <div class="cn-detail" style="color:var(--text-soft)">👨‍⚕️ ${escHtml(job.drName||'—')}${job.techName ? ' · 🔧 ' + escHtml(job.techName) : ''}</div>
+    </div>
+    <button class="cn-close" onclick="this.closest('.completion-notif').remove()" title="Kapat">✕</button>
+  `;
+  stack.appendChild(div);
+  requestAnimationFrame(() => div.classList.add('show'));
+}
+
+// Sol alt köşede, elle kapatılana kadar KAPANMAYAN "Tasarım Yüklendi — Kazımaya
+// Hazır" bildirimi. Teknisyen bir tasarım dosyası yüklediği anda tetiklenir,
+// böylece lab yeni bir dosyanın indirilip kazınmaya hazır olduğunu anında
+// fark eder — "Dosyalar" sayfasını sürekli kontrol etmesine gerek kalmaz.
+function showDesignReadyNotification(job) {
+  const stack = document.getElementById('completion-notif-stack');
+  if (!stack) return;
+  const notifId = 'designnotif-' + job.id + '-' + (job.designFilesUpdatedAt || '');
+  if (document.getElementById(notifId)) return;
+  const fileCount = Array.isArray(job.designFiles) ? job.designFiles.length : 0;
+  fireNativeAlert('Tasarım Yüklendi — Kazımaya Hazır', `${job.patient||'—'}${job.type ? ' — ' + job.type : ''}`, notifId);
+  const div = document.createElement('div');
+  div.id = notifId;
+  div.className = 'completion-notif';
+  div.innerHTML = `
+    <div class="cn-icon">🎨</div>
+    <div class="cn-body">
+      <div class="cn-title">Tasarım Yüklendi — Kazımaya Hazır</div>
+      <div class="cn-detail"><b>${escHtml(job.patient||'—')}</b>${job.type ? ' — ' + escHtml(job.type) : ''}</div>
+      <div class="cn-detail" style="color:var(--text-soft)">🔧 ${escHtml(job.techName||'—')} · ${fileCount} dosya</div>
+      <button class="btn btn-sm btn-outline" style="margin-top:6px" onclick="downloadAllJobDesignFiles(${job.id});this.closest('.completion-notif').remove()">📦 Şimdi İndir</button>
     </div>
     <button class="cn-close" onclick="this.closest('.completion-notif').remove()" title="Kapat">✕</button>
   `;
@@ -2751,6 +2796,22 @@ function loadDB() {
     Object.values(newJobs).forEach(j => { _nextPrevStatuses[j.id] = j.status; });
     _prevJobStatuses = _nextPrevStatuses;
 
+    // ── TASARIM YÜKLENDİ BİLDİRİMİ ────────────────────────
+    // Teknisyen yeni bir tasarım dosyası yüklediğinde (designFilesUpdatedAt
+    // değiştiğinde), aynı "sadece bu oturumda canlı gerçekleşen değişiklik"
+    // mantığıyla admin'e bildirim gösterilir.
+    if (_prevDesignTimestamps !== null) {
+      Object.values(newJobs).forEach(j => {
+        if (j.designFilesUpdatedAt && _prevDesignTimestamps[j.id] !== undefined &&
+            _prevDesignTimestamps[j.id] !== j.designFilesUpdatedAt) {
+          showDesignReadyNotification(j);
+        }
+      });
+    }
+    const _nextPrevDesignTimestamps = {};
+    Object.values(newJobs).forEach(j => { _nextPrevDesignTimestamps[j.id] = j.designFilesUpdatedAt || null; });
+    _prevDesignTimestamps = _nextPrevDesignTimestamps;
+
     DB.doctors     = data.doctors     || {};
     DB.jobs        = newJobs;
     DB.payments    = data.payments    || {};
@@ -2777,7 +2838,7 @@ function loadDB() {
         techs:renderTechPage, dispatch:renderDispatch, settings:renderSettingsPage,
         pending:renderPendingPage, techview:renderTechView, expenses:renderExpenses,
         monthly:renderMonthlyReport, sales:renderSalesPage, order:renderOrderForm,
-        doctorsubs:renderDoctorSubmissions, chat: () => { if (typeof closeMobileChatThread==='function') closeMobileChatThread(); renderChatThreadList(); } };
+        doctorsubs:renderDoctorSubmissions, files: renderFilesPage, chat: () => { if (typeof closeMobileChatThread==='function') closeMobileChatThread(); renderChatThreadList(); } };
       map[pg]?.(); updateBadges();
     }
   }, err => {
@@ -4047,6 +4108,7 @@ function showPage(id, el) {
     mail: () => {}, settings: renderSettingsPage, dispatch: renderDispatch,
     pending: renderPendingPage, expenses: renderExpenses, monthly: renderMonthlyReport,
     sales: renderSalesPage, order: renderOrderForm, doctorsubs: renderDoctorSubmissions,
+    files: renderFilesPage,
     chat: () => { if (typeof closeMobileChatThread==='function') closeMobileChatThread(); renderChatThreadList(); } };
   if (map[id]) map[id]();
   scheduleAutoLabelTables();
@@ -4518,7 +4580,13 @@ async function downloadAllJobDesignFiles(jobId) {
     a.href = zipUrl; a.download = `${folderName}.zip`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(zipUrl), 15000);
-    toast(ok === files.length ? `✅ ${files.length} tasarım dosyası indirildi` : `⚠️ ${ok}/${files.length} dosya paketlendi`, ok === files.length ? 'success' : 'error');
+    // İndirme başarılıysa, bu iş "Tasarımdaki İşler"den "Tasarımı Tamamlanan
+    // İşler"e taşınır (Dosyalar sayfası ve İş Yönlendirme uygulamasıyla
+    // tutarlı, tek bir kaynaktan gelen aşama takibi).
+    if (ok === files.length && !j.designDownloadedAt) {
+      try { await rtdb.ref(dbPath(`jobs/${jobId}/designDownloadedAt`)).set(new Date().toISOString()); } catch(e) {}
+    }
+    toast(ok === files.length ? `✅ ${files.length} tasarım dosyası indirildi — "Tamamlanan"a taşındı` : `⚠️ ${ok}/${files.length} dosya paketlendi`, ok === files.length ? 'success' : 'error');
   } catch (err) {
     console.error(err);
     toast('❌ İndirme hatası: ' + err.message, 'error');
@@ -8284,6 +8352,125 @@ function setDoctorSubsTab(tab) {
   renderDoctorSubmissions();
 }
 
+// ═══════════════════════════════════════════════════════
+//  🗂️ DOSYALAR — Hekimden gelen tarama dosyaları ile teknisyenden
+//  gelen tasarım dosyalarını net şekilde ayıran, merkezi bir liste.
+//  Aynı işin dosyaları farklı yerlerden geldiği için (hekim ağız içi
+//  tarama gönderir, teknisyen tasarımı hazırlayıp geri yükler), admin
+//  panelinde tablolar arasında dosya aramak yerine tek bir sayfadan
+//  kaynağına göre filtrelenmiş şekilde görülebilsin diye eklendi.
+// ═══════════════════════════════════════════════════════
+let _filesActiveTab = 'doctor';
+function switchFilesTab(tab) {
+  _filesActiveTab = tab;
+  document.getElementById('files-tab-doctor').classList.toggle('active', tab === 'doctor');
+  document.getElementById('files-tab-design').classList.toggle('active', tab === 'design');
+  document.getElementById('files-tab-tech').classList.toggle('active', tab === 'tech');
+  renderFilesPage();
+}
+
+// ── 3 AŞAMALI TAKİP — İş Yönlendirme uygulamasıyla birebir aynı mantık ──
+//   doctor : henüz teknisyene atanmamış, hekimden gelen tarama dosyaları
+//   design : teknisyene atanmış, tasarım dosyası henüz İNDİRİLMEMİŞ işler
+//            (teknisyen tasarımı yüklemiş olabilir ya da hâlâ bekliyor
+//            olabilir — ikisi de burada, ayrı ayrı işaretlenerek gösterilir)
+//   tech   : tasarım dosyası indirilmiş (kazımaya alınmış/tamamlanmış) işler
+function renderFilesPage() {
+  const q = (document.getElementById('files-search')?.value || '').trim().toLocaleLowerCase('tr-TR');
+  const el = document.getElementById('files-list');
+  if (!el) return;
+
+  let jobs = jobArr().filter(j => !j.deleted);
+  if (_filesActiveTab === 'doctor') {
+    jobs = jobs.filter(j => Array.isArray(j.files) && j.files.length);
+  } else if (_filesActiveTab === 'design') {
+    jobs = jobs.filter(j => j.techId && j.status !== 'Tamamlandı' && !j.designDownloadedAt);
+  } else {
+    jobs = jobs.filter(j => !!j.designDownloadedAt);
+  }
+
+  if (q) {
+    jobs = jobs.filter(j =>
+      (j.drName||'').toLocaleLowerCase('tr-TR').includes(q) ||
+      (j.patient||'').toLocaleLowerCase('tr-TR').includes(q) ||
+      (j.techName||'').toLocaleLowerCase('tr-TR').includes(q) ||
+      (j.type||'').toLocaleLowerCase('tr-TR').includes(q));
+  }
+
+  // En yeni işlem üstte
+  jobs.sort((a,b) => {
+    const keyOf = j => _filesActiveTab === 'doctor' ? (j.id||0)
+      : _filesActiveTab === 'tech' ? (j.designDownloadedAt || j.id || 0)
+      : (j.designFilesUpdatedAt || j.id || 0);
+    const da = keyOf(a), db = keyOf(b);
+    return (typeof db === 'string' ? db.localeCompare(String(da)) : db - da);
+  });
+
+  if (!jobs.length) {
+    const cfg = {
+      doctor: ['📥','Hekimden gelen dosya yok','Hekimlerin gönderdiği tarama dosyaları burada listelenecek.'],
+      design: ['✨','Tasarım aşamasında iş yok','Teknisyene atanmış, tasarımı henüz indirilmemiş bir iş yok.'],
+      tech:   ['✅','Tamamlanan iş yok','Tasarımı indirilen (kazımaya alınan) işler burada listelenecek.']
+    }[_filesActiveTab];
+    el.innerHTML = emptyState(cfg[0], cfg[1], q ? 'Arama kriterinize uyan kayıt bulunamadı.' : cfg[2]);
+    return;
+  }
+
+  if (_filesActiveTab === 'doctor') {
+    let h = `<table><thead><tr>
+      <th>Hekim</th><th>Hasta</th><th>İş</th><th>Teslim</th><th>Dosya Sayısı</th><th>Durum</th><th></th>
+    </tr></thead><tbody>`;
+    jobs.forEach(j => {
+      const fileCount = Array.isArray(j.files) ? j.files.length : 0;
+      h += `<tr>
+        <td><strong>${escHtml(j.drName||'-')}</strong></td>
+        <td>${escHtml(j.patient||'-')}</td>
+        <td>${escHtml(j.type||'-')}</td>
+        <td>${fmtDate(j.dateout)}</td>
+        <td>${fileCount} dosya</td>
+        <td><span class="badge ${JOB_STATUS_BADGE[j.status]||'badge-wait'}">${escHtml(j.status||'-')}</span></td>
+        <td><button class="btn btn-outline btn-sm" onclick="downloadAllJobFiles(${j.id})">📦 İndir</button></td>
+      </tr>`;
+    });
+    el.innerHTML = h + '</tbody></table>';
+  } else if (_filesActiveTab === 'design') {
+    let h = `<table><thead><tr>
+      <th>Hekim</th><th>Hasta</th><th>İş</th><th>Teknisyen</th><th>Tasarım Durumu</th><th></th>
+    </tr></thead><tbody>`;
+    jobs.forEach(j => {
+      const fileCount = Array.isArray(j.designFiles) ? j.designFiles.length : 0;
+      const hasDesign = fileCount > 0;
+      h += `<tr${hasDesign ? ' style="background:#ecfdf5"' : ''}>
+        <td><strong>${escHtml(j.drName||'-')}</strong></td>
+        <td>${escHtml(j.patient||'-')}</td>
+        <td>${escHtml(j.type||'-')}</td>
+        <td>${escHtml(j.techName||'Atanmamış')}</td>
+        <td>${hasDesign
+          ? `<span class="badge badge-done">🎨 ${fileCount} dosya — hazır</span>`
+          : `<span class="badge badge-wait">⏳ Tasarım bekleniyor</span>`}</td>
+        <td>${hasDesign ? `<button class="btn btn-primary btn-sm" onclick="downloadAllJobDesignFiles(${j.id})">📦 İndir ve Tamamla</button>` : ''}</td>
+      </tr>`;
+    });
+    el.innerHTML = h + '</tbody></table>';
+  } else {
+    let h = `<table><thead><tr>
+      <th>Hekim</th><th>Hasta</th><th>İş</th><th>Teknisyen</th><th>İndirilme Tarihi</th><th></th>
+    </tr></thead><tbody>`;
+    jobs.forEach(j => {
+      const fileCount = Array.isArray(j.designFiles) ? j.designFiles.length : 0;
+      h += `<tr>
+        <td><strong>${escHtml(j.drName||'-')}</strong></td>
+        <td>${escHtml(j.patient||'-')}</td>
+        <td>${escHtml(j.type||'-')}</td>
+        <td>${escHtml(j.techName||'-')}</td>
+        <td>${j.designDownloadedAt ? new Date(j.designDownloadedAt).toLocaleString('tr-TR') : '-'} <span style="color:var(--text-soft);font-size:11px">(${fileCount} dosya)</span></td>
+        <td><button class="btn btn-outline btn-sm" onclick="downloadAllJobDesignFiles(${j.id})">📦 Tekrar İndir</button></td>
+      </tr>`;
+    });
+    el.innerHTML = h + '</tbody></table>';
+  }
+}
+
 function renderDoctorSubmissions() {
   const el = document.getElementById('doctorsubs-list');
   if (!el) return;
@@ -10032,8 +10219,16 @@ let _mdActiveTab = 'income';
 let _mdCurrentMonth = null; // {year, month, currency}
 
 function getJobIncomeDate(j) {
-  // Tamamlanmış işlerde teslim tarihini gelir tarihi olarak sayıyoruz.
-  // Teslim yoksa id'den tarih al (Date.now() ms).
+  // Gelir, işin GERÇEKTEN tamamlandığı ay'a yazılmalı — "Teslim Tarihi"
+  // (dateout) hekimin istediği/planlanan bir HEDEF tarihtir, işin fiilen
+  // ne zaman bittiğini göstermez (örn. teslim tarihi ileri bir tarihe
+  // girilmiş ama iş henüz bitmemiş olabilir, ya da tam tersi). Bu yüzden
+  // "Tamamlandı" yapıldığı anda otomatik kaydedilen completedAt esas
+  // alınır — bu, aylık rapor tutarlarının gerçek iş yoğunluğunu doğru
+  // yansıtmasını sağlar. completedAt kaydı olmayan çok eski işlerde
+  // (bu alan sonradan eklendiği için) teslim tarihine, o da yoksa
+  // kaydın oluşturulma anına (id) geri düşülür.
+  if (j.completedAt) return j.completedAt.slice(0,10);
   if (j.dateout) return j.dateout;
   if (j.id) { const d = new Date(j.id); return d.toISOString().slice(0,10); }
   return '';
@@ -10076,16 +10271,22 @@ function computeMonthlyData(year, currency) {
     fixedExp: 0, serviceExp: 0, totalExp: 0, net: 0
   }));
 
-  // Tamamlanmış lab işlerinden gelir (teslim tarihine göre)
+  // Tamamlanmış lab işlerinden gelir (işin gerçekten bittiği aya göre).
+  // "Devreden Bakiye" kayıtları (Yeni Dönem Başlat ile oluşan sentetik
+  // satırlar) burada SAYILMAZ — onlar yeni bir iş/gelir değil, geçmiş
+  // dönemlerde zaten kazanılmış ama henüz tahsil edilmemiş bir bakiyenin
+  // taşınmasıdır. Sayılsaydı, o gelir hem orijinal işin tamamlandığı ayda
+  // hem de devir tarihinde olmak üzere İKİ KEZ görünürdü.
   jobArr().forEach(j => {
     if (j.deleted) return;
     if (j.status !== 'Tamamlandı') return;
+    if (j.isCarryForward) return;
     if ((j.currency || 'TRY') !== currency) return;
     const d = getJobIncomeDate(j);
     if (!d || d.slice(0,4) !== year) return;
     const m = parseInt(d.slice(5,7)) - 1;
     if (m >= 0 && m < 12) {
-      months[m].labIncome += (Number(j.price) || 0) * (Number(j.qty) || 1);
+      months[m].labIncome += (Number(j.price) || 0) * qtyOf(j);
     }
   });
 
@@ -10276,6 +10477,7 @@ function renderSingleMonthContent() {
     const jobs = jobArr().filter(j => {
       if (j.deleted) return false;
       if (j.status !== 'Tamamlandı') return false;
+      if (j.isCarryForward) return false;
       if ((j.currency || 'TRY') !== currency) return false;
       const d = getJobIncomeDate(j);
       return d && d.slice(0, 7) === prefix;
@@ -10298,12 +10500,12 @@ function renderSingleMonthContent() {
     if (jobs.length) {
       h += `<h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--success)">💼 Lab İşleri (${jobs.length})</h4>`;
       h += `<table style="margin-bottom:16px"><thead><tr>
-        <th>Teslim</th><th>Hekim</th><th>Hasta</th><th>İş</th>
+        <th>Tamamlanma</th><th>Hekim</th><th>Hasta</th><th>İş</th>
         <th>Adet</th><th style="text-align:right">Tutar</th>
       </tr></thead><tbody>`;
       let sum = 0;
       jobs.forEach(j => {
-        const total = (Number(j.price) || 0) * (Number(j.qty) || 1);
+        const total = (Number(j.price) || 0) * qtyOf(j);
         sum += total;
         h += `<tr>
           <td class="mono">${fmtDate(getJobIncomeDate(j))}</td>
@@ -10464,6 +10666,7 @@ function exportMonthlyPDF() {
     // Gelir tablosu
     const jobs = jobArr().filter(j => {
       if (j.deleted || j.status !== 'Tamamlandı') return false;
+      if (j.isCarryForward) return false;
       if ((j.currency || 'TRY') !== currency) return false;
       const d = getJobIncomeDate(j);
       return d && d.slice(0, 7) === prefix;
@@ -10476,7 +10679,7 @@ function exportMonthlyPDF() {
       </tr></thead><tbody>`;
       let sum = 0;
       jobs.forEach(j => {
-        const total = (Number(j.price) || 0) * (Number(j.qty) || 1);
+        const total = (Number(j.price) || 0) * qtyOf(j);
         sum += total;
         body += `<tr>
           <td>${fmtDate(getJobIncomeDate(j))}</td>
@@ -11684,6 +11887,7 @@ function renderMonthDetailContent() {
     const jobs = jobArr().filter(j => {
       if (j.deleted) return false;
       if (j.status !== 'Tamamlandı') return false;
+      if (j.isCarryForward) return false;
       if ((j.currency || 'TRY') !== currency) return false;
       const d = getJobIncomeDate(j);
       return d && d.slice(0, 7) === prefix;
@@ -11700,7 +11904,7 @@ function renderMonthDetailContent() {
     </tr></thead><tbody>`;
     let sum = 0;
     jobs.forEach(j => {
-      const total = (Number(j.price) || 0) * (Number(j.qty) || 1);
+      const total = (Number(j.price) || 0) * qtyOf(j);
       sum += total;
       h += `<tr>
         <td class="mono">${fmtDate(getJobIncomeDate(j))}</td>
