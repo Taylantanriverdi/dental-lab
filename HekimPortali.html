@@ -64,6 +64,16 @@ body{font-family:'Sora',sans-serif;background:linear-gradient(180deg,#e4eaf2 0%,
 .step-num.optional{background:#f0f4f8;color:var(--text-soft)}
 .step-content{flex:1;min-width:0}
 .step-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+
+/* 🧾 BİRDEN FAZLA İŞ KALEMİ */
+.jobtype-line{display:flex;gap:8px;margin-bottom:8px;align-items:stretch}
+.jobtype-line:last-child{margin-bottom:0}
+.jobtype-line-remove{flex:0 0 auto;width:38px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;
+  border-radius:10px;font-family:inherit;font-size:15px;cursor:pointer}
+.btn-add-line{margin-top:10px;background:none;border:1.5px dashed var(--primary);color:var(--primary);
+  border-radius:10px;padding:9px 14px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;width:100%}
+.btn-add-line:hover{background:var(--primary-light)}
+
 .step-title{font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
 .step-optional-tag{font-size:10px;font-weight:700;color:var(--text-soft);background:#f0f4f8;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
 
@@ -128,6 +138,17 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
 .color-chip.selected{background:var(--text);border-color:var(--text);color:#fff}
 
 /* FILE UPLOAD */
+/* 🎨 TASARIM KAYNAĞI SEÇİMİ */
+.design-source-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){.design-source-grid{grid-template-columns:1fr}}
+.design-source-opt{border:2px solid var(--border);border-radius:13px;padding:14px 12px;cursor:pointer;
+  transition:all .15s;text-align:center;background:#fff}
+.design-source-opt:hover{border-color:var(--primary)}
+.design-source-opt.active{border-color:var(--primary);background:#eef6ff;box-shadow:0 0 0 3px rgba(21,101,192,.1)}
+.dso-icon{font-size:26px;margin-bottom:6px}
+.dso-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.dso-sub{font-size:11px;color:var(--text-soft);line-height:1.4}
+
 .drop-zone{border:2px dashed var(--border);border-radius:13px;padding:26px 16px;text-align:center;cursor:pointer;transition:all .15s;background:#fafcfe}
 .drop-zone:hover,.drop-zone.dragover{border-color:var(--primary);background:var(--primary-light)}
 .drop-zone .dz-icon{font-size:30px;margin-bottom:8px}
@@ -499,11 +520,17 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
           <div class="step-content">
             <div class="step-title-row"><div class="step-title">İş Türü</div></div>
             <p class="section-note" id="jobtype-note">Size atanmış iş listesinden seçiniz.</p>
-            <div class="field" style="margin-bottom:0" id="jobtype-field-wrap">
-              <select id="hp-jobtype" class="inp" onchange="updateSummary()">
-                <option value="">— Seçiniz —</option>
-              </select>
+            <div id="hp-jobtype-lines">
+              <div class="jobtype-line" data-line="0">
+                <div class="field" style="margin-bottom:0;flex:1" id="jobtype-field-wrap">
+                  <select id="hp-jobtype" class="inp" onchange="updateSummary()">
+                    <option value="">— Seçiniz —</option>
+                  </select>
+                </div>
+                <input type="number" min="1" value="1" class="inp jobtype-qty" style="width:64px;flex:0 0 auto" title="Adet" oninput="updateSummary()">
+              </div>
             </div>
+            <button type="button" class="btn-add-line" onclick="addJobTypeLine()">+ 2. Kalem Ekle</button>
           </div>
         </div>
 
@@ -536,11 +563,26 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
         <div class="step-card" id="step-files">
           <div class="step-num">5</div>
           <div class="step-content">
-            <div class="step-title-row"><div class="step-title">Tarama Verisi / Dosya Yükleme</div></div>
-            <p class="section-note">STL, PLY, DCM, ZIP, PDF veya fotoğraf yükleyebilirsiniz.</p>
+            <div class="step-title-row"><div class="step-title">Tasarım Kaynağı</div></div>
+            <p class="section-note">Tasarımı laboratuvarın mı yapmasını istersiniz, yoksa kendi hazırladığınız tasarımı mı göndereceksiniz?</p>
+            <div class="design-source-grid" id="hp-design-source">
+              <div class="design-source-opt active" data-value="lab" onclick="setDesignSource('lab')">
+                <div class="dso-icon">🦷</div>
+                <div class="dso-title">Tasarımı Siz Yapın</div>
+                <div class="dso-sub">Sadece tarama/ölçü dosyamı gönderiyorum, tasarımı laboratuvar hazırlasın</div>
+              </div>
+              <div class="design-source-opt" data-value="doctor" onclick="setDesignSource('doctor')">
+                <div class="dso-icon">🎨</div>
+                <div class="dso-title">Kendi Tasarımımı Gönderiyorum</div>
+                <div class="dso-sub">Tasarımı ben hazırladım, üretime hazır dosyayı gönderiyorum</div>
+              </div>
+            </div>
+
+            <div class="step-title-row" style="margin-top:18px"><div class="step-title" id="hp-file-step-title">Tarama Verisi / Dosya Yükleme</div></div>
+            <p class="section-note" id="hp-file-step-note">STL, PLY, DCM, ZIP, PDF veya fotoğraf yükleyebilirsiniz.</p>
             <div class="drop-zone" id="hp-dropzone" onclick="document.getElementById('hp-file-input').click()">
               <div class="dz-icon">☁️</div>
-              <div class="dz-text">Dosyaları sürükleyin ya da seçmek için dokunun</div>
+              <div class="dz-text" id="hp-dropzone-text">Dosyaları sürükleyin ya da seçmek için dokunun</div>
               <div class="dz-sub">Birden fazla dosya seçebilirsiniz</div>
             </div>
             <input type="file" id="hp-file-input" multiple style="display:none" onchange="onFilesPicked(this.files)">
@@ -779,6 +821,26 @@ const TOOTH_COLORS = ['A1','A2','A3','A3.5','A4','B1','B2','B3','B4','C1','C2','
 
 let doctorsList = [];       // Firebase'den okunan hekim listesi (salt okunur)
 let selectedTeeth = new Set();
+// 🎨 Tasarım kaynağı — 'lab' (varsayılan, laboratuvar tasarlar) | 'doctor' (hekim kendi tasarımını gönderiyor)
+let designSource = 'lab';
+function setDesignSource(value) {
+  designSource = value;
+  document.querySelectorAll('#hp-design-source .design-source-opt').forEach(el => {
+    el.classList.toggle('active', el.dataset.value === value);
+  });
+  const titleEl = document.getElementById('hp-file-step-title');
+  const noteEl  = document.getElementById('hp-file-step-note');
+  const dzTextEl = document.getElementById('hp-dropzone-text');
+  if (value === 'doctor') {
+    titleEl.textContent = 'Hazır Tasarım Dosyası Yükleme';
+    noteEl.textContent = 'Üretime hazır tasarım dosyanızı (STL vb.) yükleyin — laboratuvar bu dosyayı doğrudan üretime alacaktır.';
+    dzTextEl.textContent = 'Hazır tasarım dosyanızı sürükleyin ya da seçmek için dokunun';
+  } else {
+    titleEl.textContent = 'Tarama Verisi / Dosya Yükleme';
+    noteEl.textContent = 'STL, PLY, DCM, ZIP, PDF veya fotoğraf yükleyebilirsiniz.';
+    dzTextEl.textContent = 'Dosyaları sürükleyin ya da seçmek için dokunun';
+  }
+}
 let selectedColor = '';
 let uploadedFiles = [];     // {name, size, url, uploading, error}
 let _pendingUploads = 0;
@@ -1068,30 +1130,86 @@ function enterSession(dr) {
 }
 
 // ── İş Türü — hekime laboratuvar tarafından atanmış fiyat/iş listesinden ──
-// Hekim tek bir iş türü seçer; birden fazla kalem (iş türü/adet) ekleme
-// yetkisi bilinçli olarak sadece admin/laboratuvar tarafındaki Sipariş
-// Formu'nda bırakıldı — hekim burada sadece talebini iletir.
+// Artık hekim "+ Kalem Ekle" ile aynı talebe birden fazla iş türü (kalem)
+// ekleyebilir — örn. "Zirkonya Kron ×2" + "İmplant Üstü Köprü ×1" gibi.
 function renderJobTypeSelect() {
-  const sel = document.getElementById('hp-jobtype');
+  // İlk satırın seçim listesini doldur; ek satırlar addJobTypeLine() ile
+  // eklendiğinde aynı seçenekler oraya da uygulanır.
+  populateJobTypeSelectEl(document.getElementById('hp-jobtype'));
+}
+function populateJobTypeSelectEl(sel) {
+  if (!sel || sel.tagName !== 'SELECT') return;
   const note = document.getElementById('jobtype-note');
   const prices = currentDoctor && currentDoctor.prices
     ? (Array.isArray(currentDoctor.prices) ? currentDoctor.prices : Object.values(currentDoctor.prices))
     : [];
-
   if (prices.length) {
-    note.textContent = 'Size atanmış iş listesinden seçiniz.';
+    if (note) note.textContent = 'Size atanmış iş listesinden seçiniz. Birden fazla kalem gönderiyorsanız "+ Kalem Ekle" ile ekleyebilirsiniz.';
     sel.innerHTML = '<option value="">— Seçiniz —</option>' +
       prices.map(p => `<option value="${escHtml(p.name)}">${escHtml((p.name||'').toLocaleUpperCase('tr-TR'))}</option>`).join('');
   } else {
     // Hekime henüz bir iş listesi atanmamışsa serbest metin girişine izin ver
-    note.textContent = 'Size henüz atanmış bir iş listesi yok — iş türünü yazınız.';
-    const wrap = document.getElementById('jobtype-field-wrap');
-    wrap.innerHTML = `<input type="text" id="hp-jobtype" class="inp" placeholder="Örn. Zirkonya Kron" oninput="updateSummary()">`;
+    if (note) note.textContent = 'Size henüz atanmış bir iş listesi yok — iş türünü yazınız.';
+    const input = document.createElement('input');
+    input.type = 'text'; input.className = 'inp'; input.placeholder = 'Örn. Zirkonya Kron';
+    input.setAttribute('oninput', 'updateSummary()');
+    input.id = sel.id;
+    sel.replaceWith(input);
   }
 }
+
+let _jobTypeLineCount = 1;
+function addJobTypeLine() {
+  const container = document.getElementById('hp-jobtype-lines');
+  const idx = _jobTypeLineCount++;
+  const div = document.createElement('div');
+  div.className = 'jobtype-line';
+  div.dataset.line = String(idx);
+  div.innerHTML = `
+    <div class="field" style="margin-bottom:0;flex:1">
+      <select class="inp hp-jobtype-extra" onchange="updateSummary()">
+        <option value="">— Seçiniz —</option>
+      </select>
+    </div>
+    <input type="number" min="1" value="1" class="inp jobtype-qty" style="width:64px;flex:0 0 auto" title="Adet" oninput="updateSummary()">
+    <button type="button" class="jobtype-line-remove" onclick="removeJobTypeLine(this)" title="Bu kalemi kaldır">✕</button>
+  `;
+  container.appendChild(div);
+  populateJobTypeSelectEl(div.querySelector('select'));
+  updateSummary();
+}
+function removeJobTypeLine(btn) {
+  const line = btn.closest('.jobtype-line');
+  if (line) line.remove();
+  updateSummary();
+}
+function resetJobTypeLines() {
+  const container = document.getElementById('hp-jobtype-lines');
+  container.querySelectorAll('.jobtype-line').forEach((line, i) => { if (i > 0) line.remove(); });
+  _jobTypeLineCount = 1;
+  const firstQty = container.querySelector('.jobtype-qty');
+  if (firstQty) firstQty.value = '1';
+}
+
+// Formdaki TÜM iş türü kalemlerini (tip + adet) okur — en az bir tanesi
+// doluysa geçerli sayılır, boş bırakılan ek kalemler yok sayılır.
+function getJobTypeLines() {
+  const lines = [];
+  document.querySelectorAll('#hp-jobtype-lines .jobtype-line').forEach(lineEl => {
+    const typeEl = lineEl.querySelector('select, input[type="text"]');
+    const qtyEl = lineEl.querySelector('.jobtype-qty');
+    const type = typeEl ? typeEl.value.trim() : '';
+    const qty = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
+    if (type) lines.push({ type, qty });
+  });
+  return lines;
+}
+// Geriye dönük uyumluluk için: tek bir "iş türü" metni bekleyen eski kod
+// yolları (isFormComplete, doğrulama vb.) hâlâ çalışsın diye ilk kalemin
+// türünü döndürür.
 function getJobTypeValue() {
-  const el = document.getElementById('hp-jobtype');
-  return el ? el.value.trim() : '';
+  const lines = getJobTypeLines();
+  return lines.length ? lines[0].type : '';
 }
 
 function doctorLogout() {
@@ -1403,14 +1521,15 @@ function getUploadedFileRecords() {
 
 function updateSummary() {
   const patient = document.getElementById('hp-patient').value.trim();
-  const jobType = getJobTypeValue();
+  const jobTypeLines = getJobTypeLines();
+  const jobTypeSummary = jobTypeLines.map(l => l.qty > 1 ? `${l.type} ×${l.qty}` : l.type).join(', ');
   const teeth = Array.from(selectedTeeth);
   const color = getColorValue();
   const fileCount = getUploadedFileRecords().length;
 
   const items = [
     { key:'patient', label:'Hasta Adı', value: patient, stepId:'step-patient' },
-    { key:'jobtype', label:'İş Türü', value: jobType, stepId:'step-jobtype' },
+    { key:'jobtype', label:'İş Türü', value: jobTypeSummary, stepId:'step-jobtype' },
     { key:'teeth', label:'Diş Seçimi', value: teeth.length ? `${teeth.length} diş seçildi` : '', stepId:'step-teeth' },
     { key:'color', label:'Diş Rengi', value: color, stepId:'step-color' },
     { key:'files', label:'Tarama Dosyası', value: fileCount ? `${fileCount} dosya yüklendi` : '', stepId:'step-files' },
@@ -1448,7 +1567,8 @@ function submitDoctorJob() {
   const drId = currentDoctor.id;
   const doctorName = currentDoctor.name;
   const patient = document.getElementById('hp-patient').value.trim().toLocaleUpperCase('tr-TR');
-  const jobType = getJobTypeValue();
+  const jobTypeLines = getJobTypeLines();
+  const jobType = jobTypeLines.length ? jobTypeLines[0].type : ''; // geriye dönük uyumluluk (tek kalemli eski kayıtlarla aynı alan adı)
   const teeth = Array.from(selectedTeeth).sort((a,b) => a-b);
   const color = getColorValue();
   const files = getUploadedFileRecords();
@@ -1460,7 +1580,7 @@ function submitDoctorJob() {
   // Zorunlu alan kontrolü: Hasta Adı, İş Türü, Diş Seçimi, Diş Rengi, Dosya
   const missing = [];
   if (!patient) missing.push('Hasta Adı');
-  if (!jobType) missing.push('İş Türü');
+  if (!jobTypeLines.length) missing.push('İş Türü');
   if (!teeth.length) missing.push('Diş Seçimi');
   if (!color) missing.push('Diş Rengi');
   if (!files.length) missing.push('Tarama Dosyası');
@@ -1478,14 +1598,20 @@ function submitDoctorJob() {
     drId,
     doctorName,
     patient,
-    jobType,       // Hekim tek bir iş türü seçer — birden fazla kalem eklemek
-                    // sadece laboratuvar (admin) tarafındaki Sipariş Formu'nda yapılır.
+    jobType,       // Geriye dönük uyumluluk için: ilk kalemin türü
+    jobTypes: jobTypeLines, // [{type, qty}, ...] — "+ Kalem Ekle" ile eklenen TÜM kalemler
     teeth,
     jaw: currentJaw(),
     color,
     notes,
     implantBrand,
     files,
+    // 🎨 Tasarım kaynağı: 'lab' (varsayılan) = laboratuvar tasarımı yapacak,
+    // gönderilen dosyalar HAM TARAMA'dır. 'doctor' = hekim tasarımı kendisi
+    // hazırlamış, gönderilen dosyalar üretime hazır TASARIM dosyasıdır —
+    // bu durumda laboratuvar/teknisyen tasarım aşamasını atlayıp doğrudan
+    // üretime geçebilir.
+    designSource,
     status: 'Yeni',
     createdAt: new Date().toISOString(),
     source: 'hekim-portal'
@@ -1524,12 +1650,14 @@ function resetFormForNewJob(skipShowForm) {
   document.getElementById('hp-notes').value = '';
   document.getElementById('hp-implant-brand').value = '';
   document.getElementById('hp-color-custom').value = '';
+  resetJobTypeLines();
   renderJobTypeSelect();
   selectedColor = '';
   document.querySelectorAll('.color-chip.selected').forEach(el => el.classList.remove('selected'));
   clearTeethSelection();
   uploadedFiles = [];
   renderFileList();
+  setDesignSource('lab');
   _pendingSubmissionId = null;
   _validationAttempted = false;
   document.querySelectorAll('.step-card.missing').forEach(c => c.classList.remove('missing'));
@@ -2220,6 +2348,9 @@ function renderHistDetailView(s) {
 
   document.getElementById('hist-detail-body').innerHTML = `
     <div style="margin-bottom:14px">${buildStageStepper(s)}</div>
+    ${s.designSource === 'doctor' ? `<div style="margin-bottom:14px;padding:9px 12px;background:#fdf4ff;border:1px solid #f0abfc;border-radius:9px;font-size:11.5px;color:#a21caf">
+      🎨 Bu talepte tasarımı siz gönderdiniz — laboratuvar dosyanızı doğrudan üretime alacak.
+    </div>` : ''}
     ${editable ? `<div style="margin-bottom:14px;padding:9px 12px;background:#eef6ff;border-radius:9px;font-size:11.5px;color:var(--primary)">
       ✏️ Bu talep henüz laboratuvar tarafından onaylanmadı — hasta bilgilerini ve dosyaları hâlâ düzenleyebilirsiniz. Onaylandıktan sonra bu alan kilitlenir.
     </div>` : ''}
@@ -2236,7 +2367,7 @@ function renderHistDetailView(s) {
       editable ? `<textarea id="hd-edit-notes" class="inp" rows="2" style="resize:vertical">${escHtml(s.notes||'')}</textarea>` : (s.notes ? escHtml(s.notes) : '—')
     }</div></div>
     ${s.implantBrand ? `<div class="hist-detail-row"><div class="hd-label">İmplant Markası</div><div class="hd-val">${escHtml(s.implantBrand)}</div></div>` : ''}
-    <div class="hist-detail-row"><div class="hd-label">Tarama Dosyaları</div><div class="hd-val">
+    <div class="hist-detail-row"><div class="hd-label">${s.designSource === 'doctor' ? 'Tasarım Dosyaları' : 'Tarama Dosyaları'}</div><div class="hd-val">
       ${files.length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:${editable?'8px':'0'}">${files.map((f,i) => `
         <div style="display:flex;align-items:center;gap:8px">
           <a href="${escHtml(f.url)}" target="_blank" rel="noopener" class="hist-file-chip" style="flex:1">${escHtml(f.name)}</a>
