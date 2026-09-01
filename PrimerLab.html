@@ -120,6 +120,9 @@ select.inp{cursor:pointer}
 .btn-sm{padding:5px 11px;font-size:11px;border-radius:7px}
 .btn-icon{padding:7px;width:32px;height:32px;justify-content:center}
 .btn-group{display:flex;gap:8px;flex-wrap:wrap}
+.btn-icon-grid{display:grid;grid-template-columns:repeat(2, 32px);gap:6px;justify-content:center}
+.pending-actions-grid{display:grid;grid-template-columns:32px 1fr 1fr;gap:6px;align-items:stretch;min-width:200px}
+.pending-actions-grid .btn{white-space:nowrap;padding:6px 4px;font-size:11px;justify-content:center}
 
 /* SECTIONS */
 .section{display:none;animation:fadeIn .25s ease}
@@ -232,6 +235,19 @@ select.inp{cursor:pointer}
 #ai-helper-btn:hover{transform:scale(1.08)}
 .chat-modal-box{max-width:560px;display:flex;flex-direction:column;max-height:82vh}
 .chat-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px}
+
+/* 🗂️ DOSYA YÖNETİCİSİ */
+.fm-file-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border)}
+.fm-file-row:last-child{border-bottom:none}
+.fm-file-icon{font-size:18px;flex-shrink:0}
+.fm-file-name{flex:1;min-width:0;font-size:13px;color:var(--text);text-decoration:none;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.fm-file-name:hover{text-decoration:underline;color:var(--primary)}
+.fm-file-del{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;padding:6px 10px;
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0}
+.fm-file-del:hover{background:#fee2e2}
+.fm-empty{text-align:center;padding:30px 10px;color:var(--text-soft);font-size:13px}
+
 .chat-header-title{font-size:15px;font-weight:700;color:var(--text)}
 .chat-header-sub{font-size:11.5px;color:var(--text-soft);margin-top:2px}
 .modal-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-soft);padding:4px 8px;border-radius:8px;flex-shrink:0}
@@ -331,6 +347,8 @@ select.inp{cursor:pointer}
 .spinner{width:44px;height:44px;border:4px solid var(--border);border-top-color:var(--primary);
   border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.ai-mini-spinner{display:inline-block;width:12px;height:12px;border:2px solid #ddd6fe;
+  border-top-color:#7c3aed;border-radius:50%;animation:spin 0.7s linear infinite}
 
 /* MISC */
 .empty-state{text-align:center;padding:48px 20px;color:var(--text-soft)}
@@ -644,6 +662,25 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
 <div id="toast"></div>
 <div id="completion-notif-stack"></div>
 <div id="chat-notif-stack"></div>
+
+<!-- 🗂️ DOSYA YÖNETİCİSİ — tarama (hekimden gelen) ve tasarım (teknisyenin
+     yüklediği) dosyalarını tek tek görüntüleme, indirme ve (yanlış
+     yüklenmişse) silme. Her iki dosya türü de aynı pencereden yönetilir. -->
+<div class="modal-overlay" id="file-manager-modal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title" id="fm-title">Dosyalar</div>
+        <div class="chat-header-sub" id="fm-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeFileManager()">✕</button>
+    </div>
+    <div style="padding:14px 18px;max-height:60vh;overflow-y:auto" id="fm-file-list"></div>
+    <div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+      <button class="btn btn-outline btn-sm" id="fm-download-all-btn">📦 Tümünü İndir</button>
+    </div>
+  </div>
+</div>
 
 <!-- 🤖 YARDIM ASİSTANI — programın kendi özelliklerini bilen, dışarıya
      hiçbir veri göndermeyen, yerleşik soru-cevap yardımcısı -->
@@ -1814,6 +1851,44 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
       <div class="page-header"><div class="page-title"><h2>⚙️ Sistem Ayarları</h2></div></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
 
+        <div class="card" style="border-color:#7c3aed">
+          <div class="card-title">🤖 AI Destekli Mail Analizi</div>
+          <p style="font-size:12px;color:var(--text-soft);margin-bottom:14px">
+            Açıkken, gelen bir mail eşleştiğinde önce basit anahtar kelime taramasının ötesine geçilir — mailin konusu ve gövdesi bir yapay zekaya gönderilir, o da mailin İÇERİĞİNİ bir insan gibi okuyup hasta adı, iş türü, diş rengi, materyal ve varsa özel notları anlayışlı şekilde çıkarır. Onay penceresinde "🤖 AI değerlendirmesi" olarak, ne anladığını kısaca özetler; siz yine de göndermeden önce her alanı kontrol edip düzeltebilirsiniz.<br><br>
+            <b>Not:</b> Bu özellik <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" style="color:#7c3aed;font-weight:700">OpenAI</a> API anahtarınızı gerektirir ve her analiz küçük bir maliyet oluşturur. Anahtar sadece bu tarayıcıda (yerel olarak) saklanır, başka hiçbir yere gönderilmez.
+          </p>
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:12px;padding:12px 16px;margin-bottom:12px">
+            <input type="checkbox" id="ai-mail-toggle" onchange="toggleAiMailAnalysis(this.checked)" style="width:20px;height:20px;flex-shrink:0">
+            <span style="font-size:13px;font-weight:700">
+              <span id="ai-mail-toggle-label">AI Mail Analizi: Kapalı</span>
+              <div style="font-size:11px;color:var(--text-soft);font-weight:400;margin-top:2px">Kapalıyken sistem eskisi gibi sadece anahtar kelime taraması yapar.</div>
+            </span>
+          </label>
+          <div class="form-group" style="margin:0">
+            <label>OpenAI API Anahtarı</label>
+            <div style="display:flex;gap:8px">
+              <input type="password" id="ai-mail-apikey" class="inp inp-w100" placeholder="sk-proj-..." style="flex:1">
+              <button class="btn btn-outline btn-sm" onclick="saveAiMailApiKey()">💾 Kaydet</button>
+            </div>
+            <div id="ai-mail-key-status" style="font-size:11px;color:var(--text-soft);margin-top:6px"></div>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:#f59e0b">
+          <div class="card-title">🚀 Gelen İş Paneli — Direkt Mod</div>
+          <p style="font-size:12px;color:var(--text-soft);margin-bottom:14px">
+            <b>Kapalıyken (varsayılan):</b> Gelen İş Paneli'nden gönderilen işler önce sizin "Onay Bekleyen" listenize düşer, siz onaylayınca "Devam Eden İşler"e geçer. Ayrıca panelde "🗑️ Sil" butonu kilitlidir.<br><br>
+            <b>Açıkken:</b> Gelen İş Paneli'nden gönderilen işler onayınızı beklemeden DOĞRUDAN "Devam Eden İşler"e düşer. Aynı zamanda panelde "🗑️ Sil" özelliği de aktif hale gelir. Sürekli her işi tek tek onaylamak istemediğiniz yoğun dönemlerde kullanışlıdır — istediğiniz an tekrar kapatabilirsiniz.
+          </p>
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:12px 16px">
+            <input type="checkbox" id="gip-direct-mode-toggle" onchange="toggleGipDirectMode(this.checked)" style="width:20px;height:20px;flex-shrink:0">
+            <span style="font-size:13px;font-weight:700">
+              <span id="gip-direct-mode-label">Direkt Mod: Kapalı</span>
+              <div style="font-size:11px;color:var(--text-soft);font-weight:400;margin-top:2px">Bu ayar, admin panelinden bağımsız olarak Gelen İş Paneli'ni de anında etkiler.</div>
+            </span>
+          </label>
+        </div>
+
         <div class="card">
           <div class="card-title">💾 Veri Yedekleme</div>
           <p style="font-size:12px;color:var(--text-soft);margin-bottom:12px">Verileriniz sadece bu bilgisayarda tutulmaktadır. Format veya tarayıcı geçmişi temizliği öncesi mutlaka yedek alınız.</p>
@@ -2120,6 +2195,7 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
             <div class="form-group" style="margin:0"><label>🎨 Diş Rengi</label><div id="mj-color-picker"></div><div id="mj-color-display" style="display:none"></div></div>
           </div>
           <div style="margin-top:12px;padding:10px 12px;background:#f8fafc;border-radius:8px;font-size:11px;color:var(--text-soft)" id="mj-mail-preview"></div>
+          <div id="ai-mail-analysis-box" class="hidden" style="margin-top:10px;padding:10px 12px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px"></div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-outline" onclick="closeMailJobModal()">Atla</button>
@@ -2824,6 +2900,7 @@ function loadDB() {
     DB.statementClosures = data.statementClosures || {};
     DB.pass        = data.pass        || DB.pass || '0000';
     DB.mailFilters = Array.isArray(data.mailFilters) ? data.mailFilters : (data.mailFilters ? Object.values(data.mailFilters) : []);
+    DB.settings    = data.settings    || {};
 
     try { localStorage.setItem(LOCAL_KEY + '_' + (_workspace||'default'), JSON.stringify(DB)); } catch(e) {}
 
@@ -3205,6 +3282,7 @@ function saveDB() {
     statementClosures: DB.statementClosures,
     pass:        DB.pass,
     mailFilters: DB.mailFilters,
+    settings:    DB.settings || {},
   }).catch(e => toast('Kayıt hatası: ' + e.message, 'error'));
 }
 
@@ -3313,6 +3391,102 @@ let mailAccounts = []; // compat
 let activeAccountId = null;
 let mailDownloadFolder = null;
 let _gisClient = null;
+
+// ═══════════════════════════════════════════════════════
+//  🤖 AI DESTEKLİ MAİL ANALİZİ — Claude API ile mailin konusunu ve
+//  gövdesini bir insan gibi okuyup hasta adı, iş türü, diş rengi,
+//  materyal ve özel notları çıkarır. Anahtar SADECE bu tarayıcıda
+//  (localStorage) saklanır, Firebase'e ya da başka bir yere gönderilmez.
+// ═══════════════════════════════════════════════════════
+let aiMailEnabled = false;
+let aiMailApiKey = '';
+
+function loadAiMailSettings() {
+  try {
+    aiMailEnabled = localStorage.getItem('primer_dental_ai_mail_enabled') === '1';
+    aiMailApiKey  = localStorage.getItem('primer_dental_ai_mail_key') || '';
+  } catch(e) {}
+}
+function updateAiMailSettingsUI() {
+  const toggle = document.getElementById('ai-mail-toggle');
+  const label  = document.getElementById('ai-mail-toggle-label');
+  const status = document.getElementById('ai-mail-key-status');
+  if (toggle) toggle.checked = aiMailEnabled;
+  if (label)  label.textContent = 'AI Mail Analizi: ' + (aiMailEnabled ? 'Açık' : 'Kapalı');
+  if (status) status.textContent = aiMailApiKey
+    ? '✅ Anahtar kayıtlı (sk-...' + aiMailApiKey.slice(-4) + ')'
+    : '⚠️ Henüz bir API anahtarı girilmedi.';
+}
+function toggleAiMailAnalysis(checked) {
+  if (checked && !aiMailApiKey) {
+    toast('Önce bir OpenAI API anahtarı girip kaydedin', 'error');
+    document.getElementById('ai-mail-toggle').checked = false;
+    return;
+  }
+  aiMailEnabled = !!checked;
+  localStorage.setItem('primer_dental_ai_mail_enabled', aiMailEnabled ? '1' : '0');
+  updateAiMailSettingsUI();
+  toast(aiMailEnabled ? '🤖 AI mail analizi açıldı' : '⏸️ AI mail analizi kapatıldı', 'info');
+}
+function saveAiMailApiKey() {
+  const val = document.getElementById('ai-mail-apikey').value.trim();
+  if (!val) { toast('Anahtar boş olamaz', 'error'); return; }
+  aiMailApiKey = val;
+  localStorage.setItem('primer_dental_ai_mail_key', val);
+  document.getElementById('ai-mail-apikey').value = '';
+  updateAiMailSettingsUI();
+  toast('✅ API anahtarı kaydedildi', 'success');
+}
+
+// Mailin konu+gövdesini OpenAI'ye gönderip yapılandırılmış (JSON) bir
+// değerlendirme ister. Başarısız olursa (anahtar yok, ağ hatası, vb.)
+// null döner — çağıran taraf bu durumda eskisi gibi sadece anahtar
+// kelime taramasına (parseJobFromMail) güvenmeye devam eder.
+async function analyzeMailWithAI(mail) {
+  if (!aiMailEnabled || !aiMailApiKey) return null;
+  try {
+    const doctorNames = drArr().map(d => d.name).join(', ');
+    const prompt = `Sen bir diş protez laboratuvarında çalışan, hekimlerden gelen sipariş maillerini okuyup anlayan deneyimli bir görevlisin. Aşağıdaki maili bir insan gibi dikkatlice oku ve SADECE aşağıdaki JSON formatında, başka hiçbir açıklama eklemeden cevap ver:
+
+{"patient": "hasta adı soyadı ya da null", "jobType": "iş türü (örn. Zirkonyum Kron, İmplant Üstü Köprü) ya da null", "toothColor": "VITA diş rengi kodu (örn. A2, B1) ya da null", "material": "belirtilmişse materyal ya da null", "teeth": "belirtilmiş diş numaraları varsa kısa metin ya da null", "notes": "hekimin özellikle vurguladığı, dikkat edilmesi gereken bir not varsa kısaca ya da null", "summary": "mailin ne istediğine dair 1 cümlelik özet", "confidence": "high/medium/low — bilgilerin mailden ne kadar net çıkarılabildiği"}
+
+Laboratuvarın kayıtlı hekimleri: ${doctorNames || '(kayıtlı hekim yok)'}
+
+MAİL KONUSU: ${mail.subject || '(konu yok)'}
+MAİL GÖVDESİ:
+${(mail.body || mail.preview || '').slice(0, 3000)}`;
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + aiMailApiKey
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Sen bir diş protez laboratuvarı için mail analiz asistanısın. Sadece istenen JSON formatında cevap verirsin.' },
+          { role: 'user', content: prompt }
+        ]
+      })
+    });
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      console.error('AI mail analiz hatası:', resp.status, errBody);
+      return null;
+    }
+    const data = await resp.json();
+    const text = (data.choices?.[0]?.message?.content || '').trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    return JSON.parse(jsonMatch[0]);
+  } catch (e) {
+    console.error('AI mail analiz hatası:', e);
+    return null;
+  }
+}
 
 function loadMailSettings() {
   try {
@@ -3808,7 +3982,10 @@ function toggleAiHelper() {
   if (isOpen) { closeAiHelper(); return; }
   openModal('ai-helper-modal');
   if (!_aiHelperHistory.length) {
-    appendAiHelperMessage('Merhaba! Ben DIGICAD Dental Yönetim Paneli Yardım Asistanı 🤖 Programın kullanımıyla ilgili aklınıza takılan her şeyi sorabilirsiniz.', 'bot');
+    const welcome = aiMailApiKey
+      ? 'Merhaba! Ben DIGICAD Dental Yönetim Paneli Yardım Asistanıyım 🤖 Artık gelişmiş yapay zeka desteğiyle çalışıyorum — programla ilgili aklınıza takılan HER ŞEYİ, kendi cümlelerinizle, doğal bir şekilde sorabilirsiniz.'
+      : 'Merhaba! Ben DIGICAD Dental Yönetim Paneli Yardım Asistanı 🤖 Programın kullanımıyla ilgili aklınıza takılan her şeyi sorabilirsiniz.\n\n💡 İpucu: Ayarlar sayfasından bir OpenAI API anahtarı girerseniz, çok daha akıllı ve doğal cevaplar verebilirim.';
+    appendAiHelperMessage(welcome, 'bot');
     renderAiHelperSuggestions();
   }
 }
@@ -3836,17 +4013,77 @@ function appendAiHelperMessage(text, role) {
   const el = document.getElementById('ai-helper-messages');
   const div = document.createElement('div');
   div.className = `ai-msg-row ${role === 'user' ? 'user' : 'bot'}`;
-  div.innerHTML = `<div class="ai-msg-bubble">${escHtml(text)}</div>`;
+  div.innerHTML = `<div class="ai-msg-bubble">${escHtml(text).replace(/\n/g,'<br>')}</div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  return div;
+}
+function showAiHelperTyping() {
+  const el = document.getElementById('ai-helper-messages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg-row bot';
+  div.id = 'ai-helper-typing-row';
+  div.innerHTML = `<div class="ai-msg-bubble"><span class="ai-mini-spinner"></span> yazıyor…</div>`;
   el.appendChild(div);
   el.scrollTop = el.scrollHeight;
 }
-function sendAiHelperQuestion() {
+function removeAiHelperTyping() {
+  const row = document.getElementById('ai-helper-typing-row');
+  if (row) row.remove();
+}
+
+// Yardım Asistanı'nın bu programa özel bilgi tabanını (AI_HELPER_KB) bir
+// sistem talimatına dönüştürür — bu sayede gerçek bir yapay zeka
+// kullanıldığında bile UYDURMA cevaplar değil, programın GERÇEK
+// özelliklerine dayalı doğru cevaplar verir.
+function buildAiHelperSystemPrompt() {
+  const kbText = AI_HELPER_KB.map(e => `- ${e.a}`).join('\n');
+  return `Sen DIGICAD Dental Laboratuvar Yönetim Paneli'nin yerleşik yardım asistanısın. Görevin, KULLANICIYA sadece bu programın nasıl kullanılacağı konusunda yardımcı olmak. Aşağıda programın gerçek özellikleri hakkında doğru bilgiler var — cevaplarını SADECE bu bilgilere dayandır, uydurma özellik anlatma. Bilmediğin bir şey sorulursa dürüstçe bilmediğini söyle ve en yakın ilgili özelliği öner. Kısa, samimi, doğal bir Türkçeyle cevap ver — madde madde değil, sohbet eder gibi.
+
+PROGRAMIN ÖZELLİKLERİ:
+${kbText}`;
+}
+
+// Gerçek AI ile cevap üretir (Mail Analizi için kaydedilmiş OpenAI
+// anahtarı burada da kullanılır — ayrı bir anahtar girmeye gerek yok).
+// Başarısız olursa ya da anahtar yoksa null döner, çağıran taraf eski
+// anahtar-kelime tabanlı sisteme (findAiHelperAnswer) geri döner.
+async function askAiHelperWithAI(question) {
+  if (!aiMailApiKey) return null;
+  try {
+    const messages = [
+      { role: 'system', content: buildAiHelperSystemPrompt() },
+      ..._aiHelperHistory.slice(-10).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
+    ];
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiMailApiKey },
+      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 400, messages })
+    });
+    if (!resp.ok) { console.error('AI yardım asistanı hatası:', resp.status, await resp.text()); return null; }
+    const data = await resp.json();
+    return (data.choices?.[0]?.message?.content || '').trim() || null;
+  } catch (e) {
+    console.error('AI yardım asistanı hatası:', e);
+    return null;
+  }
+}
+
+async function sendAiHelperQuestion() {
   const input = document.getElementById('ai-helper-input');
   const q = input.value.trim();
   if (!q) return;
   appendAiHelperMessage(q, 'user');
   input.value = '';
   document.getElementById('ai-helper-suggestions').innerHTML = '';
+
+  if (aiMailApiKey) {
+    showAiHelperTyping();
+    const aiAnswer = await askAiHelperWithAI(q);
+    removeAiHelperTyping();
+    if (aiAnswer) { appendAiHelperMessage(aiAnswer, 'bot'); return; }
+    // AI başarısız olduysa sessizce eski sisteme düş
+  }
   setTimeout(() => {
     appendAiHelperMessage(findAiHelperAnswer(q), 'bot');
   }, 350);
@@ -3954,8 +4191,55 @@ async function processMailsForJobs(mails, acc) {
 function processNextMailJobModal() {
   if (mailJobQueue.length === 0) return;
   const next = mailJobQueue.shift();
+  // Önce anahtar kelime taramasıyla (parseJobFromMail) modalı hemen açıyoruz
+  // ki kullanıcı beklemesin; AI analizi (varsa) arka planda çalışıp
+  // sonucu birkaç saniye içinde modala ekliyor.
   openMailJobModal(next.mail, next.dr, next.parsed);
+  runAiMailAnalysisForModal(next.mail);
   // Modal kapandığında bir sonrakini aç (confirmMailJob ve closeMailJobModal içinde tetiklenir)
+}
+
+// AI analizini arka planda çalıştırıp, hâlâ AYNI mail için modal açıksa
+// sonucu forma ve "🤖 AI değerlendirmesi" kutusuna işler. Kullanıcı çok
+// hızlı geçip modalı kapatmış/bir sonrakine geçmişse sonucu sessizce yok
+// sayar (yanlış maile uygulanmasın diye).
+async function runAiMailAnalysisForModal(mail) {
+  const box = document.getElementById('ai-mail-analysis-box');
+  if (!aiMailEnabled || !aiMailApiKey) { if (box) box.classList.add('hidden'); return; }
+  if (box) {
+    box.classList.remove('hidden');
+    box.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px"><span class="ai-mini-spinner"></span> 🤖 AI mail içeriğini değerlendiriyor…</span>`;
+  }
+  const ai = await analyzeMailWithAI(mail);
+  // Kullanıcı bu arada modalı kapatıp başka bir maile geçmiş olabilir —
+  // hâlâ aynı mail için açık mı diye kontrol et.
+  if (!pendingMailJob || pendingMailJob.mail.id !== mail.id) return;
+  if (!ai) {
+    if (box) box.innerHTML = `⚠️ AI değerlendirmesi alınamadı — anahtar kelime taramasının sonuçları kullanılıyor.`;
+    return;
+  }
+  // AI sonucu, boş bırakılmış alanları doldursun (kullanıcının zaten
+  // elle girdiği bir şeyin üzerine YAZMASIN).
+  const patientEl = document.getElementById('mj-patient');
+  const typeEl    = document.getElementById('mj-type');
+  if (patientEl && !patientEl.value.trim() && ai.patient) patientEl.value = ai.patient;
+  if (typeEl && !typeEl.value.trim() && ai.jobType) typeEl.value = ai.jobType;
+  if (ai.toothColor) buildColorPicker('mj-color-picker', ai.toothColor);
+
+  if (box) {
+    const confColor = ai.confidence === 'high' ? '#047857' : ai.confidence === 'medium' ? '#b45309' : '#dc2626';
+    const confLabel = ai.confidence === 'high' ? 'Yüksek güven' : ai.confidence === 'medium' ? 'Orta güven' : 'Düşük güven';
+    box.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px">
+        <b>🤖 AI değerlendirmesi</b>
+        <span style="font-size:10.5px;font-weight:700;color:${confColor}">${confLabel}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text)">${escHtml(ai.summary || '')}</div>
+      ${ai.teeth ? `<div style="font-size:11px;color:var(--text-soft);margin-top:4px">🦷 Diş(ler): ${escHtml(ai.teeth)}</div>` : ''}
+      ${ai.material ? `<div style="font-size:11px;color:var(--text-soft);margin-top:2px">🧪 Materyal: ${escHtml(ai.material)}</div>` : ''}
+      ${ai.notes ? `<div style="font-size:11px;color:var(--text-soft);margin-top:2px">📝 Not: ${escHtml(ai.notes)}</div>` : ''}
+    `;
+  }
 }
 
 // Manuel mail → iş kaydı butonu
@@ -4187,7 +4471,7 @@ function renderDash() {
     const overdue = j.dateout && j.dateout < today() && j.status !== 'Tamamlandı';
     const tech = j.techId ? techArr().find(t=>t.id===j.techId) : null;
     h += `<tr>
-      <td><strong>${j.drName}</strong></td>
+      <td><strong>${j.drName||'—'}</strong></td>
       <td>${j.patient||'-'}</td><td>${j.type||'<span style="color:#9ca3af">—</span>'}</td>
       <td>${tech ? `<span class="badge-spec">🔧 ${tech.name}</span>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
       <td class="mono">${fmtMoney((Number(j.price)||0)*qtyOf(j), j.currency)}</td>
@@ -4212,7 +4496,7 @@ function renderJobs(resetFilter) {
   const q  = (document.getElementById('jobs-search')?.value||'').toLowerCase();
   const sf = document.getElementById('jobs-status-filter')?.value||'';
   let list = jobArr().filter(j => j.status !== 'Tamamlandı' && !j.deleted).sort((a,b) => b.id-a.id);
-  if (q)  list = list.filter(j => j.drName.toLowerCase().includes(q)||(j.patient||'').toLowerCase().includes(q));
+  if (q)  list = list.filter(j => (j.drName||'').toLowerCase().includes(q)||(j.patient||'').toLowerCase().includes(q));
   if (sf) list = list.filter(j => j.status === sf);
   if (!list.length) { document.getElementById('main-job-list').innerHTML = emptyState('🎉','Devam eden iş yok'); return; }
   let h = `<table><thead><tr><th>Hekim</th><th>Hasta</th><th>İş</th><th>Teknisyen</th><th>Tutar</th><th>Teslim</th><th>Tarama</th><th>Tasarım</th><th>Durum</th><th></th></tr></thead><tbody>`;
@@ -4225,14 +4509,14 @@ function renderJobs(resetFilter) {
     const scanCount = Array.isArray(j.files) ? j.files.length : 0;
     const designCount = Array.isArray(j.designFiles) ? j.designFiles.length : 0;
     h += `<tr>
-      <td><strong>${j.drName}</strong>${mailBadge}</td>
+      <td><strong>${j.drName||'—'}</strong>${mailBadge}</td>
       <td>${j.patient||'-'}</td>
-      <td>${j.type||'<span style="color:#9ca3af">—</span>'}${colorChip}</td>
+      <td>${j.type||'<span style="color:#9ca3af">—</span>'}${colorChip}${j.designSource === 'doctor' ? ` <span title="Hekim kendi tasarımını gönderdi" style="font-size:9px;background:#fdf4ff;color:#a21caf;border:1px solid #f0abfc;border-radius:10px;padding:1px 6px;font-weight:700">🎨 Hazır Tasarım</span>` : ''}</td>
       <td>${tech ? `<span class="badge-spec">🔧 ${tech.name}</span>${tech.type === 'dis' ? (j.acceptedByTech ? `<div style="font-size:9.5px;color:#047857;font-weight:700;margin-top:3px" title="${j.acceptedAt ? new Date(j.acceptedAt).toLocaleString('tr-TR') : ''}">✅ Kabul Etti</div>` : `<div style="font-size:9.5px;color:#b45309;font-weight:700;margin-top:3px">⏳ Kabul Bekliyor</div>`) : ''}` : '<span style="color:var(--text-soft);font-size:11px">Atanmamış</span>'}</td>
       <td class="mono">${fmtMoney((Number(j.price)||0)*qtyOf(j), j.currency)}</td>
       <td style="${overdue?'color:var(--danger);font-weight:700':''}">${fmtDate(j.dateout)}${overdue?' ⚠️':''}</td>
-      <td>${scanCount ? `<button class="btn btn-sm btn-outline" title="Hekimin/adminin yüklediği tarama dosyalarını indir" onclick="downloadAllJobFiles(${j.id})">📦 ${scanCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
-      <td>${designCount ? `<button class="btn btn-sm btn-outline" title="Teknisyenin yüklediği tasarım dosyalarını indir" onclick="downloadAllJobDesignFiles(${j.id})">🎨 ${designCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}${j.implantParts && j.implantParts.trim() ? ` <span title="İmplant parçaları notu: ${escHtml(j.implantParts)}" style="display:inline-block;margin-left:4px;font-size:13px;cursor:help">🦷</span>` : ''}</td>
+      <td>${scanCount ? `<button class="btn btn-sm btn-outline" title="Tarama dosyalarını görüntüle / indir / sil" onclick="openFileManager(${j.id}, 'scan')">📦 ${scanCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
+      <td>${designCount ? `<button class="btn btn-sm btn-outline" title="Tasarım dosyalarını görüntüle / indir / sil" onclick="openFileManager(${j.id}, 'design')">🎨 ${designCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}${j.implantParts && j.implantParts.trim() ? ` <span title="İmplant parçaları notu: ${escHtml(j.implantParts)}" style="display:inline-block;margin-left:4px;font-size:13px;cursor:help">🦷</span>` : ''}</td>
       <td>${j.status === 'Tamamlama Onayı'
         ? `<div style="display:flex;flex-direction:column;gap:4px;align-items:center">
              <span class="badge badge-pending-done" style="text-align:center">📨 Tamamlama Onayı</span>
@@ -4246,9 +4530,10 @@ function renderJobs(resetFilter) {
             <option value="Tamamlandı" ${j.status==='Tamamlandı'?'selected':''}>✅ Tamamla</option>
           </select>`}
       </td>
-      <td><div class="btn-group">
+      <td><div class="btn-icon-grid">
         <button class="btn btn-sm btn-outline btn-icon" title="Bu iş hakkında sohbet" onclick="goToJobChat(${j.id})">💬</button>
         <button class="btn btn-sm btn-outline btn-icon" title="Düzenle" onclick="openJobEditModal(${j.id})">✏️</button>
+        <button class="btn btn-sm btn-outline btn-icon" title="Onay Bekleyen'e geri al (bir yanlışlık olduysa)" onclick="revertJobToPending(${j.id})" style="color:#b45309;border-color:rgba(180,83,9,.3)">↩️</button>
         <button class="btn btn-sm btn-danger btn-icon" title="Sil" onclick="delJob(${j.id})">🗑️</button>
       </div></td>
     </tr>`;
@@ -4283,13 +4568,13 @@ function renderDoneJobs() {
     const scanCount = Array.isArray(j.files) ? j.files.length : 0;
     const designCount = Array.isArray(j.designFiles) ? j.designFiles.length : 0;
     h += `<tr>
-      <td><strong>${j.drName}</strong>${correctedBadge}</td>
+      <td><strong>${j.drName||'—'}</strong>${correctedBadge}</td>
       <td>${j.patient||'-'}</td><td>${j.type||'<span style="color:#9ca3af">—</span>'}</td>
       <td>${tech ? `<span class="badge-spec">🔧 ${tech.name}</span>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
       <td class="mono">${fmtMoney((Number(j.price)||0)*qtyOf(j), j.currency)}</td>
       <td>${fmtDate(j.dateout)}</td>
-      <td>${scanCount ? `<button class="btn btn-sm btn-outline" title="Hekimin/adminin yüklediği tarama dosyalarını indir" onclick="downloadAllJobFiles(${j.id})">📦 ${scanCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
-      <td>${designCount ? `<button class="btn btn-sm btn-outline" title="Teknisyenin yüklediği tasarım dosyalarını indir" onclick="downloadAllJobDesignFiles(${j.id})">🎨 ${designCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}${j.implantParts && j.implantParts.trim() ? ` <span title="İmplant parçaları notu: ${escHtml(j.implantParts)}" style="display:inline-block;margin-left:4px;font-size:13px;cursor:help">🦷</span>` : ''}</td>
+      <td>${scanCount ? `<button class="btn btn-sm btn-outline" title="Tarama dosyalarını görüntüle / indir / sil" onclick="openFileManager(${j.id}, 'scan')">📦 ${scanCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
+      <td>${designCount ? `<button class="btn btn-sm btn-outline" title="Tasarım dosyalarını görüntüle / indir / sil" onclick="openFileManager(${j.id}, 'design')">🎨 ${designCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}${j.implantParts && j.implantParts.trim() ? ` <span title="İmplant parçaları notu: ${escHtml(j.implantParts)}" style="display:inline-block;margin-left:4px;font-size:13px;cursor:help">🦷</span>` : ''}</td>
       <td><div class="btn-group">
         <button class="btn btn-sm btn-outline btn-icon" title="Bu iş hakkında sohbet" onclick="goToJobChat(${j.id})">💬</button>
         <button class="btn btn-sm btn-outline btn-icon" title="Düzelt (adet, fiyat, renk vb.)" onclick="openJobEditModal(${j.id})" style="color:#b45309;border-color:rgba(245,158,11,.4)">🛠️</button>
@@ -4304,7 +4589,7 @@ function renderDoneJobs() {
 function showCorrectionHistory(jobId) {
   const j = DB.jobs[jobId];
   if (!j || !Array.isArray(j.corrections) || !j.corrections.length) return;
-  let msg = `🛠️ DÜZELTME TARİHÇESİ\n${j.drName} — ${j.patient||'-'} (${j.type})\n${'─'.repeat(40)}\n\n`;
+  let msg = `🛠️ DÜZELTME TARİHÇESİ\n${j.drName||'Bilinmeyen Hekim'} — ${j.patient||'-'} (${j.type})\n${'─'.repeat(40)}\n\n`;
   j.corrections.forEach((c, i) => {
     const d = new Date(c.at);
     const dateStr = d.toLocaleDateString('tr-TR') + ' ' + d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
@@ -4399,6 +4684,55 @@ function delJob(id) {
     }
   }
   toast('🗑️ İş silindi','info');
+}
+
+// "Devam Eden İşler"deki bir işi, yanlışlıkla onaylandıysa ya da tekrar
+// gözden geçirilmesi gerekiyorsa, "Onay Bekleyen" listesine GERİ alır.
+// approvePendingJob'ın tam tersi yönde çalışır — iş kaydı jobs'tan
+// silinip aynı bilgilerle (teknisyen ataması, tasarım kaynağı, dosyalar
+// dahil) pendingJobs'a taşınır. Talebin admin panelindeki geçmişi
+// (sourceDoctorSubmissionId) korunur, hekim portalında da durum
+// otomatik olarak "Onay Bekliyor"a döner.
+function revertJobToPending(id) {
+  const j = DB.jobs[id];
+  if (!j) return;
+  if (!confirm(`"${j.patient||'Bu iş'}" tekrar "Onay Bekleyen" listesine alınsın mı?\n\nBu, bir yanlışlık olduğunda düzeltip yeniden onaylamanızı sağlar.`)) return;
+
+  const pendingId = Date.now();
+  DB.pendingJobs[pendingId] = {
+    id: pendingId,
+    drId: j.drId, drName: j.drName,
+    patient: j.patient,
+    type: j.type,
+    price: j.price,
+    currency: j.currency,
+    qty: j.qty,
+    dateout: j.dateout,
+    toothColor: j.toothColor,
+    techId: j.techId || null,
+    techName: j.techName || null,
+    note: j.note || '',
+    files: j.files || [],
+    designFiles: j.designFiles || [],
+    designFilesUpdatedAt: j.designFilesUpdatedAt || null,
+    designSource: j.designSource || 'lab',
+    sourceDoctorSubmissionId: j.sourceDoctorSubmissionId || null,
+    orderGroupId: j.orderGroupId || null,
+    orderGroupIndex: j.orderGroupIndex ?? null,
+    orderGroupTotal: j.orderGroupTotal || null,
+    orderForm: j.orderForm || null,
+    submittedBy: j.sourceType === 'tech_order_form' ? 'tech' : 'manual',
+    submittedAt: new Date().toISOString(),
+    status: 'Onay Bekliyor',
+    revertedFrom: id,
+    revertedAt: new Date().toISOString()
+  };
+  delete DB.jobs[id];
+  saveDB();
+  renderJobs();
+  renderPendingPage();
+  updateBadges();
+  toast('↩️ İş "Onay Bekleyen" listesine geri alındı', 'info');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4548,8 +4882,83 @@ function _buildDesignInfoText(j) {
   return lines.join('\r\n');
 }
 
+// ═══════════════════════════════════════════════════════
+//  🗂️ DOSYA YÖNETİCİSİ — hem tarama (hekimden gelen) hem tasarım
+//  (teknisyenin yüklediği) dosyaları tek tek görüntüleyip, yanlış
+//  yüklenmişse silebilme. Silme işlemi sadece işin dosya listesinden
+//  kaldırır (kayıttan çıkarır) — yerine doğrusu tekrar yüklenebilir.
+// ═══════════════════════════════════════════════════════
+let _fmJobId = null, _fmFileType = null; // 'scan' | 'design'
+
+// Bir iş kaydını hem "jobs" (onaylanmış) hem "pendingJobs" (admin onayı
+// bekleyen) koleksiyonlarında arar — Onay Bekleyen sayfasındaki işler için
+// de dosya yöneticisi/indirme kullanılabilsin diye. Bulduğu koleksiyonu
+// da bildirir ki silme/güncelleme doğru yere yazılabilsin.
+function _findJobOrPending(id) {
+  if (DB.jobs && DB.jobs[id]) return { record: DB.jobs[id], collection: 'jobs' };
+  if (DB.pendingJobs && DB.pendingJobs[id]) return { record: DB.pendingJobs[id], collection: 'pendingJobs' };
+  return null;
+}
+
+function openFileManager(jobId, fileType) {
+  _fmJobId = jobId; _fmFileType = fileType;
+  renderFileManager();
+  openModal('file-manager-modal');
+}
+function closeFileManager() {
+  closeModal('file-manager-modal');
+  _fmJobId = null; _fmFileType = null;
+}
+function renderFileManager() {
+  const found = _findJobOrPending(_fmJobId);
+  if (!found) { closeFileManager(); return; }
+  const j = found.record;
+  const isScan = _fmFileType === 'scan';
+  const files = isScan ? (Array.isArray(j.files) ? j.files : []) : (Array.isArray(j.designFiles) ? j.designFiles : []);
+  document.getElementById('fm-title').textContent = isScan ? '📎 Tarama Dosyaları' : '🎨 Tasarım Dosyaları';
+  document.getElementById('fm-sub').textContent = `${j.patient||'—'} — ${j.type||''} · ${j.drName||''}`.trim();
+  const listEl = document.getElementById('fm-file-list');
+  if (!files.length) {
+    listEl.innerHTML = '<div class="fm-empty">Bu işte hiç dosya yok.</div>';
+  } else {
+    listEl.innerHTML = files.map((f,i) => `
+      <div class="fm-file-row">
+        <span class="fm-file-icon">📄</span>
+        <a class="fm-file-name" href="${f.url||'#'}" target="_blank" title="${escHtml(f.name||'dosya')} — indirmek için tıklayın">${escHtml(f.name||'dosya')}</a>
+        <button class="fm-file-del" onclick="deleteJobFile(${_fmJobId}, '${_fmFileType}', ${i})">🗑️ Sil</button>
+      </div>`).join('');
+  }
+  const downloadBtn = document.getElementById('fm-download-all-btn');
+  downloadBtn.style.display = files.length ? '' : 'none';
+  downloadBtn.onclick = () => { isScan ? downloadAllJobFiles(_fmJobId) : downloadAllJobDesignFiles(_fmJobId); };
+}
+
+// Bir işten TEK bir dosyayı siler (yanlış yüklenmiş bir tarama/tasarım
+// dosyasını düzeltmek için). confirm ile onay alınır, geri dönüşü yoktur
+// — silinen dosyanın yerine doğrusu tekrar yüklenebilir.
+async function deleteJobFile(jobId, fileType, index) {
+  const found = _findJobOrPending(jobId);
+  if (!found) return;
+  const { record: j, collection } = found;
+  const field = fileType === 'scan' ? 'files' : 'designFiles';
+  const arr = Array.isArray(j[field]) ? j[field] : [];
+  const f = arr[index];
+  if (!f) return;
+  if (!confirm(`"${f.name || 'Bu dosya'}" silinecek. Emin misiniz?\n\nBu işlem geri alınamaz — yanlış yüklendiyse, silip yerine doğrusunu tekrar yükleyebilirsiniz.`)) return;
+  const newArr = arr.filter((_, i) => i !== index);
+  j[field] = newArr;
+  try {
+    await rtdb.ref(dbPath(`${collection}/${jobId}/${field}`)).set(newArr);
+    toast('🗑️ Dosya silindi', 'info');
+    renderFileManager();
+  } catch (err) {
+    toast('Dosya silinemedi: ' + err.message, 'error');
+  }
+}
+
 async function downloadAllJobDesignFiles(jobId) {
-  const j = DB.jobs && DB.jobs[jobId];
+  const found = _findJobOrPending(jobId);
+  const j = found ? found.record : null;
   if (!j) { toast('İş bulunamadı!', 'error'); return; }
   const files = Array.isArray(j.designFiles) ? j.designFiles : [];
   if (!files.length) { toast('Bu işte indirilecek tasarım dosyası yok', 'info'); return; }
@@ -4581,12 +4990,22 @@ async function downloadAllJobDesignFiles(jobId) {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(zipUrl), 15000);
     // İndirme başarılıysa, bu iş "Tasarımdaki İşler"den "Tasarımı Tamamlanan
-    // İşler"e taşınır (Dosyalar sayfası ve İş Yönlendirme uygulamasıyla
-    // tutarlı, tek bir kaynaktan gelen aşama takibi).
-    if (ok === files.length && !j.designDownloadedAt) {
-      try { await rtdb.ref(dbPath(`jobs/${jobId}/designDownloadedAt`)).set(new Date().toISOString()); } catch(e) {}
+    // İşler"e taşınır (Dosyalar sayfası ve İş Yönlendirme & Takip
+    // uygulamasıyla tutarlı, tek bir kaynaktan gelen aşama takibi).
+    // Ayrıca işin GERÇEK durumu da "Tamamlama Onayı"na geçirilir ki
+    // "Onay Bekleyen → Biten İş Onayı" akışına düşsün ve admin son onayı
+    // verdiğinde "Tamamlanan İşler" listesine gerçekten yansısın — aksi
+    // halde sadece bu sayfada "tamamlanmış" görünüp ana iş akışından
+    // kopuk kalırdı.
+    if (ok === files.length) {
+      const updates = {};
+      if (!j.designDownloadedAt) updates.designDownloadedAt = new Date().toISOString();
+      if (j.status !== 'Tamamlama Onayı' && j.status !== 'Tamamlandı') updates.status = 'Tamamlama Onayı';
+      if (Object.keys(updates).length) {
+        try { await rtdb.ref(dbPath(`jobs/${jobId}`)).update(updates); } catch(e) {}
+      }
     }
-    toast(ok === files.length ? `✅ ${files.length} tasarım dosyası indirildi — "Tamamlanan"a taşındı` : `⚠️ ${ok}/${files.length} dosya paketlendi`, ok === files.length ? 'success' : 'error');
+    toast(ok === files.length ? `✅ ${files.length} tasarım dosyası indirildi — "Tamamlama Onayı"na alındı` : `⚠️ ${ok}/${files.length} dosya paketlendi`, ok === files.length ? 'success' : 'error');
   } catch (err) {
     console.error(err);
     toast('❌ İndirme hatası: ' + err.message, 'error');
@@ -5256,6 +5675,7 @@ function openMailJobModal(mail, dr, parsedInfo) {
   document.getElementById('mj-dateout').value  = parsedInfo.dateout || '';
   document.getElementById('mail-job-source').innerText = `📨 ${mail.from || mail.from_email} — ${mail.subject || '(Konu yok)'}`;
   document.getElementById('mj-mail-preview').innerText = (mail.preview || mail.body || '').slice(0, 200);
+  document.getElementById('ai-mail-analysis-box').classList.add('hidden');
   const ts = document.getElementById('mj-tech');
   ts.innerHTML = '<option value="">Atanmamış</option>' + techArr().map(t=>`<option value="${t.id}">${escHtml(t.name)} (${t.spec})</option>`).join('');
   // Diş rengi — mailden tespit edildiyse otomatik seç
@@ -5300,35 +5720,86 @@ async function confirmMailJob() {
     techName : tech ? tech.name : null,
     toothColor: getSelectedColor('mj-color-picker'),
     status   : 'Bekliyor', deleted: false,
+    files    : [],
     mailRef  : mail.id, mailFrom: mail.from||mail.from_email||'',
     mailSubject: mail.subject||'', mailDate: mail.date||'',
   };
   DB.jobs[jid] = job;
   saveDB(); renderDash(); renderJobs();
-  if (mail.has_attachments && mail.attachments?.length) {
-    await downloadMailAttachments(mail, drName, patient);
-  }
   closeMailJobModal();
   toast(`📋 İş kaydı oluşturuldu: ${patient} / ${drName}`, 'success');
+  if (mail.has_attachments && mail.attachments?.length) {
+    await downloadMailAttachments(mail, drName, patient, jid);
+  }
   setTimeout(() => processNextMailJobModal(), 300);
 }
 
-async function downloadMailAttachments(mail, drName, patient) {
-  if (mailDownloadFolder) {
+// Mailin eklerini GERÇEKTEN Gmail'den çeker (sadece meta veri değil, ikili
+// içeriği de), Firebase Storage'a yükler ve oluşturulan iş kaydının dosya
+// listesine ekler — böylece ek dosyalar tıpkı Hekim Portalı'ndan gelen
+// bir tarama dosyası gibi Gelen İş Paneli'nde, Teknisyen Portalı'nda ve
+// bu panelin her yerinde görünüp indirilebilir hale gelir. Ayrıca
+// isteğe bağlı olarak bilgisayara/klasöre de yerel bir kopya bırakır.
+async function downloadMailAttachments(mail, drName, patient, jobId) {
+  const uploadedFiles = [];
+  toast(`📎 ${mail.attachments.length} ek dosya işleniyor…`, 'info');
+
+  for (const a of (mail.attachments || [])) {
     try {
-      const safe = `${today()}_${drName}_${patient}`.replace(/[^a-z0-9ğüşıöçĞÜŞİÖÇ\s_]/gi,'_');
-      const dir  = await mailDownloadFolder.getDirectoryHandle(safe, {create:true});
-      for (const a of (mail.attachments||[])) {
-        if (!a.data) continue;
-        const bc=atob(a.data), ba=new Uint8Array(bc.length);
-        for(let i=0;i<bc.length;i++) ba[i]=bc.charCodeAt(i);
-        const af=await dir.getFileHandle(a.filename||'ek',{create:true});
-        const aw=await af.createWritable(); await aw.write(ba); await aw.close();
+      // 1) Ekin gerçek ikili içeriğini Gmail API'den çek (liste çekilirken
+      //    sadece attachmentId geliyordu, veri içeriği burada alınıyor).
+      const r = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${a.messageId}/attachments/${a.attachmentId}`,
+        { headers: { Authorization: 'Bearer ' + gmailToken } }
+      );
+      if (!r.ok) throw new Error('Gmail API HTTP ' + r.status);
+      const data = await r.json();
+      const b64 = (data.data || '').replace(/-/g,'+').replace(/_/g,'/');
+      if (!b64) throw new Error('Ek verisi boş döndü');
+      const bc = atob(b64);
+      const ba = new Uint8Array(bc.length);
+      for (let i = 0; i < bc.length; i++) ba[i] = bc.charCodeAt(i);
+      const blob = new Blob([ba], { type: a.mimeType || 'application/octet-stream' });
+
+      // 2) Firebase Storage'a yükle — sistemin geri kalanıyla aynı yerde
+      //    dursun ki iş kaydı üzerinden her yerden erişilebilsin.
+      if (jobId) {
+        const path = `mailAttachments/${_workspace}/${jobId}/${Date.now()}_${a.filename}`;
+        const ref = fbStorage.ref(path);
+        await ref.put(blob);
+        const url = await ref.getDownloadURL();
+        uploadedFiles.push({ name: a.filename, url, size: blob.size });
       }
-      toast(`📎 Ekler "${safe}" klasörüne indirildi`, 'info');
-    } catch(e){ console.error('Ek hatası:', e); }
-  } else {
-    (mail.attachments||[]).forEach(a=>{ if(a.data) downloadAttachment(a.filename,a.mimeType,a.data); });
+
+      // 3) İsteğe bağlı: seçilmiş bir yerel klasör varsa oraya da kopyala,
+      //    yoksa doğrudan tarayıcıdan indir (eski davranış korunuyor).
+      if (mailDownloadFolder) {
+        const safe = `${today()}_${drName}_${patient}`.replace(/[^a-z0-9ğüşıöçĞÜŞİÖÇ\s_]/gi,'_');
+        const dir  = await mailDownloadFolder.getDirectoryHandle(safe, {create:true});
+        const af   = await dir.getFileHandle(a.filename||'ek', {create:true});
+        const aw   = await af.createWritable();
+        await aw.write(await blob.arrayBuffer());
+        await aw.close();
+      } else if (!jobId) {
+        // jobId yoksa (manuel/tekil indirme senaryosu), doğrudan indir
+        const url2 = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url2; link.download = a.filename || 'ek'; link.click();
+        setTimeout(() => URL.revokeObjectURL(url2), 10000);
+      }
+    } catch (e) {
+      console.error('Ek indirilemedi:', a.filename, e);
+      toast(`⚠️ "${a.filename}" indirilemedi: ${e.message}`, 'error');
+    }
+  }
+
+  if (jobId && uploadedFiles.length) {
+    DB.jobs[jobId].files = uploadedFiles;
+    saveDB();
+    renderJobs();
+    toast(`✅ ${uploadedFiles.length} ek dosya işe eklendi`, 'success');
+  } else if (mailDownloadFolder) {
+    toast(`📎 Ekler klasöre indirildi`, 'info');
   }
 }
 
@@ -5341,7 +5812,7 @@ function renderTrash() {
   let h = `<table><thead><tr><th>Hekim</th><th>Hasta</th><th>İş</th><th>Durum</th><th></th></tr></thead><tbody>`;
   list.forEach(j => {
     h += `<tr>
-      <td>${j.drName}</td><td>${j.patient||'-'}</td><td>${j.type}</td>
+      <td>${j.drName||'—'}</td><td>${j.patient||'-'}</td><td>${j.type||'—'}</td>
       <td><span class="badge ${JOB_STATUS_BADGE[j.status]||'badge-wait'}">${j.status}</span></td>
       <td><div class="btn-group">
         <button class="btn btn-sm btn-success" onclick="restoreJob(${j.id})">↩ Geri Yükle</button>
@@ -7034,7 +7505,7 @@ function renderTechJobs() {
       <td class="mono">${fmtMoney((j.price||0)*qtyOf(j), j.currency)}</td>
       <td style="${overdue?'color:var(--danger);font-weight:700':''}">${fmtDate(j.dateout)}${overdue?' ⚠️':''}</td>
       <td><span class="status-pill ${statusCls}">${escHtml(j.status||'-')}</span></td>
-      <td>${fileCount ? `<button class="btn btn-sm btn-outline" onclick="downloadAllJobFiles(${j.id})">📦 ${fileCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
+      <td>${fileCount ? `<button class="btn btn-sm btn-outline" onclick="openFileManager(${j.id}, 'scan')">📦 ${fileCount}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
     </tr>`;
   });
   el.innerHTML = h + '</tbody></table></div>';
@@ -7329,7 +7800,7 @@ function dCard(j, assigned) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:13px">${j.patient||'—'}</div>
-          <div style="font-size:11px;color:var(--text-soft)">👨‍⚕️ ${j.drName}</div>
+          <div style="font-size:11px;color:var(--text-soft)">👨‍⚕️ ${j.drName||'—'}</div>
           <div style="font-size:12px;color:var(--primary);font-weight:600;margin-top:2px">🦷 ${j.type}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
@@ -7345,15 +7816,15 @@ function dCard(j, assigned) {
       ${showAcceptance ? `<div style="font-size:9.5px;font-weight:700;margin-top:4px;color:${j.acceptedByTech ? '#047857' : '#b45309'}">
         ${j.acceptedByTech ? `✅ Teknisyen kabul etti${j.acceptedAt ? ' · ' + new Date(j.acceptedAt).toLocaleDateString('tr-TR') : ''}` : '⏳ Teknisyen henüz kabul etmedi'}
       </div>` : ''}
-      ${Array.isArray(j.files) && j.files.length ? `<button class="ab" style="margin-top:4px;background:var(--primary-light,#e8f0fe);color:var(--primary)" onclick="event.stopPropagation();downloadAllJobFiles(${j.id})">📦 ${j.files.length} dosya indir</button>` : ''}
-      ${Array.isArray(j.designFiles) && j.designFiles.length ? `<button class="ab" style="margin-top:4px;background:#fdf4ff;color:#a21caf" onclick="event.stopPropagation();downloadAllJobDesignFiles(${j.id})">🎨 ${j.designFiles.length} tasarım indir</button>` : ''}
+      ${Array.isArray(j.files) && j.files.length ? `<button class="ab" style="margin-top:4px;background:var(--primary-light,#e8f0fe);color:var(--primary)" onclick="event.stopPropagation();openFileManager(${j.id}, 'scan')">📦 ${j.files.length} dosya indir</button>` : ''}
+      ${Array.isArray(j.designFiles) && j.designFiles.length ? `<button class="ab" style="margin-top:4px;background:#fdf4ff;color:#a21caf" onclick="event.stopPropagation();openFileManager(${j.id}, 'design')">🎨 ${j.designFiles.length} tasarım indir</button>` : ''}
     </div>`;
   }
   return `<div class="d-card ${cls}" onclick="openAssignModal(${j.id})">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:13px">${j.patient||'—'}</div>
-        <div style="font-size:11px;color:var(--text-soft)">👨‍⚕️ ${j.drName}</div>
+        <div style="font-size:11px;color:var(--text-soft)">👨‍⚕️ ${j.drName||'—'}</div>
         <div style="font-size:12px;color:var(--primary);font-weight:600;margin-top:2px">🦷 ${j.type}</div>
       </div>
       <div class="pdot" style="background:${dotColor};margin-top:3px"></div>
@@ -7366,8 +7837,8 @@ function dCard(j, assigned) {
       </div>
     </div>
     ${j.mailRef ? '<div style="font-size:9px;color:var(--accent);margin-top:4px">📧 Mailden geldi</div>' : ''}
-    ${Array.isArray(j.files) && j.files.length ? `<button class="ab" style="margin-top:4px;background:var(--primary-light,#e8f0fe);color:var(--primary)" onclick="event.stopPropagation();downloadAllJobFiles(${j.id})">📦 ${j.files.length} dosya indir</button>` : ''}
-      ${Array.isArray(j.designFiles) && j.designFiles.length ? `<button class="ab" style="margin-top:4px;background:#fdf4ff;color:#a21caf" onclick="event.stopPropagation();downloadAllJobDesignFiles(${j.id})">🎨 ${j.designFiles.length} tasarım indir</button>` : ''}
+    ${Array.isArray(j.files) && j.files.length ? `<button class="ab" style="margin-top:4px;background:var(--primary-light,#e8f0fe);color:var(--primary)" onclick="event.stopPropagation();openFileManager(${j.id}, 'scan')">📦 ${j.files.length} dosya indir</button>` : ''}
+      ${Array.isArray(j.designFiles) && j.designFiles.length ? `<button class="ab" style="margin-top:4px;background:#fdf4ff;color:#a21caf" onclick="event.stopPropagation();openFileManager(${j.id}, 'design')">🎨 ${j.designFiles.length} tasarım indir</button>` : ''}
   </div>`;
 }
 
@@ -7376,7 +7847,7 @@ function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return
 function openAssignModal(jobId) {
   const j = jobArr().find(x => x.id === jobId); if (!j) return;
   _assigningJobId = jobId; _selectedTechId = j.techId || null;
-  document.getElementById('assign-job-info').innerText = `${j.patient} · ${j.type} · ${j.drName}`;
+  document.getElementById('assign-job-info').innerText = `${j.patient||'—'} · ${j.type||'—'} · ${j.drName||'—'}`;
   document.getElementById('assign-note').value = j.dispatchNote || '';
   document.getElementById('assign-remove-btn').style.display = j.techId ? '' : 'none';
   const active = jobArr().filter(x => !x.deleted && x.status !== 'Tamamlandı');
@@ -7462,6 +7933,33 @@ function renderSettingsPage() {
   if (sel) sel.value = String(stored);
   updateRefreshStatus(stored);
   updateBackupStatusUI();
+  updateGipDirectModeUI();
+  updateAiMailSettingsUI();
+}
+
+// ═══════════════════════════════════════════════════════
+//  🚀 GELEN İŞ PANELİ — DİREKT MOD ANAHTARI
+//  db/{workspace}/settings/gipDirectMode — hem admin panel hem Gelen İş
+//  Paneli AYNI bu değeri okur. Açıkken: gönderilen işler onay beklemeden
+//  doğrudan "jobs"a yazılır VE panelin silme özelliği aktif olur.
+//  Kapalıyken: eski davranış (pendingJobs'a düşer, silme kilitli).
+// ═══════════════════════════════════════════════════════
+function updateGipDirectModeUI() {
+  const toggle = document.getElementById('gip-direct-mode-toggle');
+  const label = document.getElementById('gip-direct-mode-label');
+  if (!toggle) return;
+  const on = !!(DB.settings && DB.settings.gipDirectMode);
+  toggle.checked = on;
+  if (label) label.textContent = 'Direkt Mod: ' + (on ? 'Açık' : 'Kapalı');
+}
+function toggleGipDirectMode(checked) {
+  if (!DB.settings) DB.settings = {};
+  DB.settings.gipDirectMode = !!checked;
+  saveDB();
+  updateGipDirectModeUI();
+  toast(checked
+    ? '🚀 Direkt Mod açıldı — Gelen İş Paneli\'nden gelen işler artık onay beklemeden Devam Eden İşler\'e düşecek'
+    : '⏸️ Direkt Mod kapatıldı — Gelen İş Paneli\'nden gelen işler yine Onay Bekleyen\'e düşecek', 'info');
 }
 
 function saveRefreshInterval() {
@@ -7579,7 +8077,7 @@ function renderTechView() {
         <td>${escHtml(j.type)}${j.mailRef ? ' <span style="font-size:9px;color:var(--accent)">📧</span>' : ''}</td>
         <td style="${overdue ? 'color:var(--danger);font-weight:700' : ''}">${fmtDate(j.dateout)}${overdue ? ' ⚠️' : ''}</td>
         <td><span class="badge ${cl}">${JOB_STATUS_ICONS[j.status]||''} ${j.status}</span></td>
-        <td>${fileCount ? `<button class="btn btn-sm btn-outline" onclick="downloadAllJobFiles(${j.id})">📦 ${fileCount} dosya</button>` : `<span style="color:var(--text-soft);font-size:11px">—</span>`}</td>
+        <td>${fileCount ? `<button class="btn btn-sm btn-outline" onclick="openFileManager(${j.id}, 'scan')">📦 ${fileCount} dosya</button>` : `<span style="color:var(--text-soft);font-size:11px">—</span>`}</td>
         <td><select class="inp" style="padding:5px 8px;font-size:12px" onchange="techSetStatus(${j.id},this.value)">
           <option value="Bekliyor"   ${j.status==='Bekliyor'  ?'selected':''}>⏳ Bekliyor</option>
           <option value="Tasarımda"  ${j.status==='Tasarımda' ?'selected':''}>🎨 Tasarımda</option>
@@ -8429,7 +8927,7 @@ function renderFilesPage() {
         <td>${fmtDate(j.dateout)}</td>
         <td>${fileCount} dosya</td>
         <td><span class="badge ${JOB_STATUS_BADGE[j.status]||'badge-wait'}">${escHtml(j.status||'-')}</span></td>
-        <td><button class="btn btn-outline btn-sm" onclick="downloadAllJobFiles(${j.id})">📦 İndir</button></td>
+        <td><button class="btn btn-outline btn-sm" onclick="openFileManager(${j.id}, 'scan')">📦 İndir</button></td>
       </tr>`;
     });
     el.innerHTML = h + '</tbody></table>';
@@ -8448,7 +8946,7 @@ function renderFilesPage() {
         <td>${hasDesign
           ? `<span class="badge badge-done">🎨 ${fileCount} dosya — hazır</span>`
           : `<span class="badge badge-wait">⏳ Tasarım bekleniyor</span>`}</td>
-        <td>${hasDesign ? `<button class="btn btn-primary btn-sm" onclick="downloadAllJobDesignFiles(${j.id})">📦 İndir ve Tamamla</button>` : ''}</td>
+        <td>${hasDesign ? `<button class="btn btn-primary btn-sm" onclick="openFileManager(${j.id}, 'design')">📦 İndir ve Tamamla</button>` : ''}</td>
       </tr>`;
     });
     el.innerHTML = h + '</tbody></table>';
@@ -8464,7 +8962,7 @@ function renderFilesPage() {
         <td>${escHtml(j.type||'-')}</td>
         <td>${escHtml(j.techName||'-')}</td>
         <td>${j.designDownloadedAt ? new Date(j.designDownloadedAt).toLocaleString('tr-TR') : '-'} <span style="color:var(--text-soft);font-size:11px">(${fileCount} dosya)</span></td>
-        <td><button class="btn btn-outline btn-sm" onclick="downloadAllJobDesignFiles(${j.id})">📦 Tekrar İndir</button></td>
+        <td><button class="btn btn-outline btn-sm" onclick="openFileManager(${j.id}, 'design')">📦 Tekrar İndir</button></td>
       </tr>`;
     });
     el.innerHTML = h + '</tbody></table>';
@@ -8510,7 +9008,9 @@ function renderDoctorSubmissions() {
   list.forEach(s => {
     const category = getDoctorSubmissionCategory(s);
     const isNew = !s.status || s.status === 'Yeni';
-    const statusBadge = isNew
+    const statusBadge = s.cancelRequested
+      ? `<span class="badge" style="background:#f59e0b;color:#fff" title="Sebep: ${escHtml(s.cancelRequestReason||'')}">🚫 İptal Talebi</span>`
+      : isNew
       ? `<span class="badge" style="background:var(--accent);color:#fff">🆕 Yeni</span>`
       : category === 'done'
         ? `<span class="badge" style="background:var(--success);color:#fff">✅ Tamamlandı</span>`
@@ -8543,6 +9043,10 @@ function renderDoctorSubmissions() {
       <td>${filesHtml}</td>
       <td style="font-size:12px;max-width:180px;white-space:normal">${escHtml(s.notes||'')}</td>
       <td style="text-align:right;white-space:nowrap">
+        ${s.cancelRequested ? `<div class="btn-group" style="margin-bottom:4px">
+          <button class="btn btn-sm btn-success" title="İptali onayla — bu iş ve talep kalıcı olarak silinir" onclick="approveCancelRequest(${s.id})">✅ İptali Onayla</button>
+          <button class="btn btn-sm btn-outline" title="İptal talebini reddet — iş olduğu gibi kalır" onclick="rejectCancelRequest(${s.id})">❌ Reddet</button>
+        </div><br>` : ''}
         ${files.length ? `<button class="btn btn-sm btn-outline" title="Tüm dosyaları hekim/hasta adıyla bir klasöre indir" onclick="downloadAllSubmissionFiles(${s.id})">📦 Tümünü İndir</button>` : ''}
         ${s.status !== 'Aktarıldı'
           ? `<button class="btn btn-sm btn-primary" title="Sipariş Formu'na aktar" onclick="importDoctorSubmissionToOrderForm(${s.id})">📝 Forma Aktar</button>`
@@ -8553,6 +9057,48 @@ function renderDoctorSubmissions() {
   });
 
   el.innerHTML = h + '</tbody></table>';
+}
+
+// ═══════════════════════════════════════════════════════
+//  🚫 İPTAL TALEBİ ONAYI/REDDİ — Gelen İş Paneli'nden gönderilen "yanlış
+//  girildi" iptal taleplerini admin burada görüp karar veriyor.
+// ═══════════════════════════════════════════════════════
+function approveCancelRequest(submissionId) {
+  const s = DB.doctorSubmissions[submissionId];
+  if (!s) return;
+  if (!confirm(`"${s.patient||'Bu talep'}" için gelen iptal talebi onaylansın mı?\n\nSebep: ${s.cancelRequestReason||'—'}\n\nBu işlem, talebi ve bağlı iş kaydını (varsa) kalıcı olarak silecek.`)) return;
+  // Bağlı iş kayıtlarını da (jobs / pendingJobs) sil
+  jobArr().filter(j => j.sourceDoctorSubmissionId === submissionId).forEach(j => { j.deleted = true; });
+  Object.keys(DB.pendingJobs || {}).forEach(id => {
+    if (DB.pendingJobs[id]?.sourceDoctorSubmissionId === submissionId) delete DB.pendingJobs[id];
+  });
+  delete DB.doctorSubmissions[submissionId];
+  saveDB();
+  renderDoctorSubmissions();
+  updateBadges();
+  toast('✅ İptal talebi onaylandı, kayıt silindi', 'success');
+}
+function rejectCancelRequest(submissionId) {
+  const s = DB.doctorSubmissions[submissionId];
+  if (!s) return;
+  if (!confirm(`"${s.patient||'Bu talep'}" için gelen iptal talebi reddedilsin mi?\n\nİş, olduğu gibi devam edecek.`)) return;
+  delete s.cancelRequested;
+  delete s.cancelRequestReason;
+  delete s.cancelRequestedAt;
+  jobArr().filter(j => j.sourceDoctorSubmissionId === submissionId).forEach(j => {
+    delete j.cancelRequested; delete j.cancelRequestReason; delete j.cancelRequestedAt;
+  });
+  Object.keys(DB.pendingJobs || {}).forEach(id => {
+    if (DB.pendingJobs[id]?.sourceDoctorSubmissionId === submissionId) {
+      delete DB.pendingJobs[id].cancelRequested;
+      delete DB.pendingJobs[id].cancelRequestReason;
+      delete DB.pendingJobs[id].cancelRequestedAt;
+    }
+  });
+  saveDB();
+  renderDoctorSubmissions();
+  updateBadges();
+  toast('❌ İptal talebi reddedildi, iş devam ediyor', 'info');
 }
 
 // Dosya/klasör adlarında sorun çıkarabilecek karakterleri temizler
@@ -8678,7 +9224,8 @@ function _buildJobInfoText(j) {
 // üzerinden yüklediği) tek bir ZIP arşivinde toplayıp indirir — aynı mantık
 // "Hekimden Gelenler" indirme özelliğiyle birebir, sadece kaynak DB.jobs.
 async function downloadAllJobFiles(jobId) {
-  const j = DB.jobs && DB.jobs[jobId];
+  const found = _findJobOrPending(jobId);
+  const j = found ? found.record : null;
   if (!j) { toast('İş bulunamadı!', 'error'); return; }
   const files = Array.isArray(j.files) ? j.files : [];
   if (!files.length) { toast('Bu işte indirilecek tarama dosyası yok', 'info'); return; }
@@ -8989,7 +9536,7 @@ function renderIncomingApprovalList() {
 
   let h = `<table><thead><tr>
     <th>Teknisyen</th><th>Hekim</th><th>Hasta</th><th>İş</th>
-    <th>Tutar</th><th>Adet</th><th>Teslim</th><th>Renk</th><th>Not</th><th>Tarih</th><th>Durum</th><th>İşlem</th>
+    <th>Tutar</th><th>Adet</th><th>Teslim</th><th>Renk</th><th>Tarama</th><th>Tasarım</th><th>Not</th><th>Tarih</th><th>Durum</th><th>İşlem</th>
   </tr></thead><tbody>`;
 
   list.forEach(p => {
@@ -9002,8 +9549,8 @@ function renderIncomingApprovalList() {
       : `<span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">Bekliyor</span>`;
 
     const actions = p.status === 'Reddedildi'
-      ? `<button class="btn btn-sm btn-outline" onclick="adminDeletePending(${p.id})">🗑️ Sil</button>`
-      : `<div class="btn-group">
+      ? `<button class="btn btn-sm btn-outline" style="width:100%" onclick="adminDeletePending(${p.id})">🗑️ Sil</button>`
+      : `<div class="pending-actions-grid">
           <button class="btn btn-sm btn-outline btn-icon" title="Düzenle" onclick="openPendingEditModal(${p.id})" style="color:#1565c0;border-color:rgba(21,101,192,.3)">✏️</button>
           <button class="btn btn-sm btn-success" onclick="approvePendingJob(${p.id})">✅ Onayla</button>
           <button class="btn btn-sm btn-danger" onclick="rejectPendingJob(${p.id})">❌ Reddet</button>
@@ -9023,11 +9570,13 @@ function renderIncomingApprovalList() {
       <td>${techCell}</td>
       <td><strong>${escHtml(p.drName)}</strong></td>
       <td>${escHtml(p.patient)}</td>
-      <td>${p.type ? escHtml(p.type) : '<span style="color:#9ca3af">—</span>'}${p.orderGroupId ? ` <span title="Bu, aynı siparişin ${p.orderGroupTotal||''} kaleminden biri — diğer kalem(ler) ayrı satırda" style="font-size:9px;color:var(--primary);font-weight:700">🔗</span>` : ''}</td>
+      <td>${p.type ? escHtml(p.type) : '<span style="color:#9ca3af">—</span>'}${p.orderGroupId ? ` <span title="Bu, aynı siparişin ${p.orderGroupTotal||''} kaleminden biri — diğer kalem(ler) ayrı satırda" style="font-size:9px;color:var(--primary);font-weight:700">🔗</span>` : ''}${p.designSource === 'doctor' ? ` <span title="Hekim kendi tasarımını gönderdi" style="font-size:9px;background:#fdf4ff;color:#a21caf;border:1px solid #f0abfc;border-radius:10px;padding:1px 6px;font-weight:700">🎨 Hazır Tasarım</span>` : ''}</td>
       <td class="mono">${fmtMoney(p.price, p.currency)}</td>
       <td>${p.qty}</td>
       <td>${fmtDate(p.dateout)}</td>
       <td>${colorChip}</td>
+      <td>${Array.isArray(p.files) && p.files.length ? `<button class="btn btn-sm btn-outline" title="Tarama dosyalarını görüntüle / indir / sil" onclick="openFileManager(${p.id}, 'scan')">📦 ${p.files.length}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
+      <td>${Array.isArray(p.designFiles) && p.designFiles.length ? `<button class="btn btn-sm btn-outline" title="Tasarım dosyalarını görüntüle / indir / sil" onclick="openFileManager(${p.id}, 'design')">🎨 ${p.designFiles.length}</button>` : '<span style="color:var(--text-soft);font-size:11px">—</span>'}</td>
       <td style="max-width:180px;font-size:11px;color:var(--text-soft)">${escHtml(p.note || '')}${p.rejectReason ? `<div style="color:var(--danger);margin-top:3px">Red: ${escHtml(p.rejectReason)}</div>` : ''}</td>
       <td style="font-size:10px;color:var(--text-soft)">${submitted}</td>
       <td>${statusBadge}</td>
@@ -9217,9 +9766,13 @@ function approvePendingJob(id) {
   const techName = techId ? (p.techName || (techArr().find(t => t.id === techId)?.name) || null) : null;
 
   const jobId = Date.now();
+  // p.drName eksikse (bazı eski/hatalı kayıtlarda olabiliyor), hekim
+  // kaydından adı çözmeyi dene — o da yoksa en azından "undefined" yazısı
+  // yerine anlaşılır bir yer tutucu göster.
+  const resolvedDrName = p.drName || (p.drId ? drArr().find(d => d.id === p.drId)?.name : null) || 'Bilinmeyen Hekim';
   DB.jobs[jobId] = {
     id: jobId,
-    drId: p.drId, drName: p.drName,
+    drId: p.drId, drName: resolvedDrName,
     patient: p.patient,
     type: p.type,
     price: p.price,
@@ -9228,12 +9781,23 @@ function approvePendingJob(id) {
     dateout: p.dateout,
     techId, techName,
     toothColor: p.toothColor,
-    status: 'Bekliyor',
+    // Teknisyen zaten atanmışsa (Gelen İş Paneli'nden ya da admin'in kendi
+    // elle atamasından), onay anında durum doğrudan "Üretimde" olarak
+    // başlar — aksi halde teknisyen atanmış olsa bile iş "Bekliyor"
+    // durumunda kalıyor, bu da İş Dağıtım Merkezi'nde ve Devam Eden
+    // İşler'de sanki hiç atanmamış gibi kafa karıştırıcı görünüyordu.
+    // 🎨 Hekim kendi tasarımını gönderdiyse (designSource:'doctor'),
+    // tasarım aşaması zaten tamamlanmış demektir — iş teknisyen atanmış
+    // olsun olmasın doğrudan "Üretimde" ile başlar.
+    status: (techId || p.designSource === 'doctor') ? 'Üretimde' : 'Bekliyor',
     deleted: false,
     approvedFrom: p.id,
     approvedAt: new Date().toISOString(),
     note: p.note || '',
     files: p.files || [],
+    designFiles: p.designFiles || [],
+    designFilesUpdatedAt: p.designFilesUpdatedAt || null,
+    designSource: p.designSource || 'lab',
     orderForm: p.orderForm || null,
     orderGroupId: p.orderGroupId || null,
     orderGroupIndex: p.orderGroupIndex ?? null,
@@ -9266,10 +9830,18 @@ function rejectPendingJob(id) {
 
 function adminDeletePending(id) {
   if (!confirm('Bu kaydı kalıcı olarak silmek istiyor musunuz?')) return;
+  const p = DB.pendingJobs[id];
   delete DB.pendingJobs[id];
   saveDB();
   renderPendingPage();
   updateBadges();
+  // Bu, bir hekim talebinden (Hekim Portalı / Gelen İş Paneli) geldiyse,
+  // o talebi de sil — aksi halde Gelen İş Paneli'nde artık var olmayan
+  // bu iş hâlâ "İşleme Alınanlar"da görünmeye devam ederdi. Admin paneli
+  // ile Gelen İş Paneli her zaman PARALEL ilerlemeli.
+  if (p && p.sourceDoctorSubmissionId && !isOfflineWorkspace()) {
+    rtdb.ref(dbPath('doctorSubmissions/' + p.sourceDoctorSubmissionId)).remove().catch(() => {});
+  }
   toast('Kayıt silindi', 'info');
 }
 
@@ -12346,6 +12918,7 @@ document.addEventListener('visibilitychange', () => {
 window.onload = async () => {
   // Workspace seçilmeden loadDB çağırmıyoruz — önce şifre sonra seçim
   loadMailSettings();
+  loadAiMailSettings();
   // Renk seçicileri başlat
   initAllColorPickers();
   const storedRefresh = parseInt(localStorage.getItem('primer_dental_refresh_min') || '0');
