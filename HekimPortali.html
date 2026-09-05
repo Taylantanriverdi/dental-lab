@@ -575,19 +575,28 @@ textarea.inp{resize:vertical;min-height:100px;line-height:1.6}
           </div>
         </div>
 
+        <div class="step-card" id="step-dateout">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <div class="step-title-row"><div class="step-title">Talep Edilen Teslim Tarihi</div></div>
+            <p class="section-note">Bu işin ne zaman hazır olmasını istediğinizi seçiniz.</p>
+            <input type="date" id="hp-dateout" class="inp" onchange="updateSummary()">
+          </div>
+        </div>
+
         <div class="step-card" id="step-notes">
-          <div class="step-num optional">6</div>
+          <div class="step-num optional">7</div>
           <div class="step-content">
             <div class="step-title-row">
               <div class="step-title">Notlar</div>
               <span class="step-optional-tag">İsteğe bağlı</span>
             </div>
-            <textarea id="hp-notes" class="inp" placeholder="Özel talimatlar, materyal tercihi, teslim tarihi vb."></textarea>
+            <textarea id="hp-notes" class="inp" placeholder="Özel talimatlar, materyal tercihi vb."></textarea>
           </div>
         </div>
 
         <div class="step-card" id="step-implant">
-          <div class="step-num optional">7</div>
+          <div class="step-num optional">8</div>
           <div class="step-content">
             <div class="step-title-row">
               <div class="step-title">İmplant Markası</div>
@@ -1398,7 +1407,8 @@ function updateSubmitState() {
 function isFormComplete() {
   const patient = document.getElementById('hp-patient').value.trim();
   const jobType = getJobTypeValue();
-  return !!(patient && jobType && selectedTeeth.size && getColorValue() && getUploadedFileRecords().length);
+  const dateout = document.getElementById('hp-dateout').value;
+  return !!(patient && jobType && selectedTeeth.size && getColorValue() && getUploadedFileRecords().length && dateout);
 }
 
 function startAutoSendCountdown() {
@@ -1453,6 +1463,7 @@ function updateSummary() {
   const teeth = Array.from(selectedTeeth);
   const color = getColorValue();
   const fileCount = getUploadedFileRecords().length;
+  const dateout = document.getElementById('hp-dateout').value;
 
   const items = [
     { key:'patient', label:'Hasta Adı', value: patient, stepId:'step-patient' },
@@ -1460,6 +1471,7 @@ function updateSummary() {
     { key:'teeth', label:'Diş Seçimi', value: teeth.length ? `${teeth.length} diş seçildi` : '', stepId:'step-teeth' },
     { key:'color', label:'Diş Rengi', value: color, stepId:'step-color' },
     { key:'files', label:'Tarama Dosyası', value: fileCount ? `${fileCount} dosya yüklendi` : '', stepId:'step-files' },
+    { key:'dateout', label:'Teslim Tarihi', value: dateout ? fmtDateShort(dateout) : '', stepId:'step-dateout' },
   ];
 
   const doneCount = items.filter(it => it.value).length;
@@ -1500,16 +1512,18 @@ function submitDoctorJob() {
   const files = getUploadedFileRecords();
   const notes = document.getElementById('hp-notes').value.trim();
   const implantBrand = document.getElementById('hp-implant-brand').value.trim();
+  const dateout = document.getElementById('hp-dateout').value;
 
   updateSummary();
 
-  // Zorunlu alan kontrolü: Hasta Adı, İş Türü, Diş Seçimi, Diş Rengi, Dosya
+  // Zorunlu alan kontrolü: Hasta Adı, İş Türü, Diş Seçimi, Diş Rengi, Dosya, Teslim Tarihi
   const missing = [];
   if (!patient) missing.push('Hasta Adı');
   if (!jobType) missing.push('İş Türü');
   if (!teeth.length) missing.push('Diş Seçimi');
   if (!color) missing.push('Diş Rengi');
   if (!files.length) missing.push('Tarama Dosyası');
+  if (!dateout) missing.push('Teslim Tarihi');
 
   if (missing.length) {
     toast(`Eksik alanlar: ${missing.join(', ')}`, 'error');
@@ -1531,6 +1545,8 @@ function submitDoctorJob() {
     color,
     notes,
     implantBrand,
+    dateout,       // Hekimin talep ettiği teslim tarihi — Sipariş Formu açılırken
+                    // otomatik doldurulur, laboratuvar isterse değiştirebilir.
     files,
     // 🎨 Tasarım kaynağı: 'lab' (varsayılan) = laboratuvar tasarımı yapacak,
     // gönderilen dosyalar HAM TARAMA'dır. 'doctor' = hekim tasarımı kendisi
@@ -1576,6 +1592,8 @@ function resetFormForNewJob(skipShowForm) {
   document.getElementById('hp-notes').value = '';
   document.getElementById('hp-implant-brand').value = '';
   document.getElementById('hp-color-custom').value = '';
+  document.getElementById('hp-dateout').value = '';
+  document.getElementById('hp-dateout').min = new Date().toISOString().slice(0,10);
   renderJobTypeSelect();
   selectedColor = '';
   document.querySelectorAll('.color-chip.selected').forEach(el => el.classList.remove('selected'));
@@ -2288,6 +2306,7 @@ function renderHistDetailView(s) {
     <div class="hist-detail-row"><div class="hd-label">Çene</div><div class="hd-val">${jaw || '—'}</div></div>
     <div class="hist-detail-row"><div class="hd-label">Dişler</div><div class="hd-val">${teeth.length ? `<div class="hist-tooth-tags">${teeth.map(t=>`<span class="hist-tooth-tag">${t}</span>`).join('')}</div>` : '—'}</div></div>
     <div class="hist-detail-row"><div class="hd-label">Diş Rengi</div><div class="hd-val">${s.color ? escHtml(s.color) : '—'}</div></div>
+    <div class="hist-detail-row"><div class="hd-label">Talep Edilen Teslim</div><div class="hd-val">${s.dateout ? fmtDateShort(s.dateout) : '—'}</div></div>
     <div class="hist-detail-row"><div class="hd-label">Notlar</div><div class="hd-val">${
       editable ? `<textarea id="hd-edit-notes" class="inp" rows="2" style="resize:vertical">${escHtml(s.notes||'')}</textarea>` : (s.notes ? escHtml(s.notes) : '—')
     }</div></div>
