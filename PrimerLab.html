@@ -1170,6 +1170,7 @@ body.ws-primer div.form-group:has(#tq-color-picker){display:none !important}
             <option value="Tamamlama Onayı">📨 Tamamlama Onayı</option>
           </select>
           <button class="btn btn-danger btn-sm" onclick="exportJobsPDF()">📄 PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="cleanupEmptyJobs()" title="Hekim, hasta ve iş türü hiç girilmemiş, tamamen boş kayıtları toplu temizler">🧹 Boş Kayıtları Temizle</button>
         </div>
       </div>
       <div class="card"><div id="main-job-list"></div></div>
@@ -4666,26 +4667,75 @@ function revertJob(id) {
   if (DB.jobs[id]) { DB.jobs[id].status = 'Üretimde'; saveDB(); renderDoneJobs(); renderDash(); }
   toast('↩ Geri alındı','info');
 }
-function delJob(id) {
-  if (!confirm('Bu iş silinecek. Silinenler bölümünden geri yükleyebilirsiniz.')) return;
-  const j = DB.jobs[id];
-  if (j) {
-    j.deleted = true;
-    saveDB();
-    renderJobs();
-    renderDash();
-    // Bu iş bir hekim talebinden (Hekim Portalı) geldiyse, o talebi de
-    // sil — aksi halde iş "Silinenler"e taşınsa bile hekim, "Gönderdiğim
-    // İşler" ekranında aynı talebi hâlâ (silinmemiş gibi) görmeye devam
-    // ederdi. İş "Silinenler"den geri yüklenirse bu talep geri gelmez —
-    // bilinçli bir sadeleştirme, gerekirse hekim talebi tekrar gönderebilir.
-    if (j.sourceDoctorSubmissionId && !isOfflineWorkspace()) {
-      rtdb.ref(dbPath('doctorSubmissions/' + j.sourceDoctorSubmissionId)).remove().catch(() => {});
+// 🧹 "Devam Eden İşler" listesinde bazen hekim/hasta/iş türü hiç
+// girilmemiş, tamamen boş satırlar görülebiliyor (örn. bir dosya
+// yüklemesi yarım kalmış, form gönderilmeden sayfa kapatılmış vb.).
+// Bu araç, hekim (drId/drName), hasta (patient) ve iş türü (type)
+// alanlarının ÜÇÜ DE boş olan kayıtları tek seferde bulup güvenle
+// çöp kutusuna (Silinenler) taşır — gerçek, dolu bir kayda ASLA
+// dokunmaz, geri alınabilir (kalıcı silme değildir).
+function cleanupEmptyJobs() {
+  // ÖNEMLİ: j.id alanına değil, Firebase'deki GERÇEK anahtara (key) göre
+  // çalışıyoruz — bazı eski/bozuk kayıtlarda j.id alanı gerçek anahtarla
+  // birebir örtüşmeyebiliyor, bu da "id"ye göre silmeyi sessizce başarısız
+  // kılabiliyordu. Object.entries ile doğrudan gerçek anahtar üzerinden
+  // işlem yapılıyor, bu sorunu kökten ortadan kaldırıyor.
+  const isEmpty = j => j && !j.deleted &&
+    !j.drId && !(j.drName && String(j.drName).trim()) &&
+    !(j.patient && String(j.patient).trim()) &&
+    !(j.type && String(j.type).trim());
+  const entries = Object.entries(DB.jobs || {}).filter(([key, j]) => isEmpty(j));
+
+  if (!entries.length) { toast('Temizlenecek boş kayıt bulunamadı 🎉', 'info'); return; }
+  if (!confirm(`Hekim, hasta ve iş türü hiç girilmemiş ${entries.length} tamamen boş kayıt bulundu.\n\nHepsi çöp kutusuna (Silinenler) taşınacak — geri alınabilir, kalıcı silinmez. Devam edilsin mi?`)) return;
+
+  let okCount = 0, failCount = 0;
+  entries.forEach(([key, j]) => {
+    try {
+      DB.jobs[key].deleted = true;
+      okCount++;
+    } catch (err) {
+      console.error('Boş kayıt işaretlenemedi:', key, err);
+      failCount++;
     }
+  });
+
+  saveDB();
+  renderJobs();
+  renderDash();
+
+  if (failCount) {
+    toast(`⚠️ ${okCount} kayıt temizlendi, ${failCount} kayıt işlenemedi (konsolu kontrol edin)`, 'error');
+  } else {
+    toast(`🧹 ${okCount} boş kayıt temizlendi`, 'success');
   }
-  toast('🗑️ İş silindi','info');
+
+  // Değişikliğin GERÇEKTEN Firebase'e yazılıp yazılmadığını doğrula —
+  // saveDB() bir ağ hatasını sessizce yutmuş olabilir, bu kontrol bunu
+  // yakalayıp kullanıcıya haber verir.
+  setTimeout(() => {
+    const stillThere = entries.filter(([key]) => DB.jobs[key] && !DB.jobs[key].deleted);
+    if (stillThere.length) {
+      toast(`❗ ${stillThere.length} kayıt hâlâ listede görünüyor — kaydetme sırasında bir bağlantı sorunu olabilir, sayfayı yenileyip tekrar deneyin`, 'error');
+      renderJobs();
+    }
+  }, 1500);
 }
 
+function delJob(id) {
+  const j = DB.jobs[id];
+  if (!j) { toast('Bu kayıt zaten bulunamadı — sayfa muhtemelen güncel değil, yenileniyor…', 'error'); renderJobs(); return; }
+  if (!confirm('Bu iş silinecek. Silinenler bölümünden geri yükleyebilirsiniz.')) return;
+  j.deleted = true;
+  saveDB();
+  renderJobs();
+  renderDash();
+  if (j.sourceDoctorSubmissionId && !isOfflineWorkspace()) {
+    rtdb.ref(dbPath('doctorSubmissions/' + j.sourceDoctorSubmissionId)).remove().catch(() => {});
+  }
+  if (detailDrId != null && activeDetailTab === 'jobs') renderDetailJobs();
+  toast('🗑️ İş silindi','info');
+}
 // "Devam Eden İşler"deki bir işi, yanlışlıkla onaylandıysa ya da tekrar
 // gözden geçirilmesi gerekiyorsa, "Onay Bekleyen" listesine GERİ alır.
 // approvePendingJob'ın tam tersi yönde çalışır — iş kaydı jobs'tan
@@ -6306,12 +6356,13 @@ function renderDetailJobs() {
       const cf = j.isCarryForward;
       h += `<tr${cf ? ' style="background:#fffbeb"' : ''}>
         <td>${cf ? '<span style="font-weight:700;color:#b45309">📋 ' + (j.patient||'Devreden Bakiye') + '</span>' : (j.patient||'-')}</td>
-        <td>${j.type}</td>
+        <td>${j.type || '<span style="color:#9ca3af">— (iş türü boş)</span>'}</td>
         <td class="mono">${fmtMoney((Number(j.price)||0)*qtyOf(j), j.currency)}</td>
         <td>${fmtDate(j.dateout)}</td>
         <td class="text-soft" style="font-size:11px">#${j.id}</td>
         <td>
           <button class="btn btn-sm btn-outline btn-icon" title="Düzenle${cf ? ' (devreden bakiye tutarı)' : ''}" onclick="openJobEditFromDetail(${j.id})">✏️</button>
+          ${cf ? '' : `<button class="btn btn-sm btn-danger btn-icon" title="Sil (çöp kutusuna taşınır, geri alınabilir)" onclick="delJob(${j.id})">🗑️</button>`}
         </td>
       </tr>`;
     });
